@@ -1378,3 +1378,88 @@ issue_3389: {
     }
     expect_stdout: "PASS"
 }
+
+object_super: {
+    options = {
+        properties: true,
+    }
+    input: {
+        ({
+            f(a) {
+                return a ? console.log("PASS") : super.log("PASS");
+            },
+        }).f(console);
+    }
+    expect: {
+        ({
+            f(a) {
+                return a ? console.log("PASS") : super.log("PASS");
+            },
+        }).f(console);
+    }
+    expect_stdout: "PASS"
+    node_version: ">=4"
+}
+
+issue_4831_1: {
+    options = {
+        properties: true,
+    }
+    input: {
+        console.log({
+            f() {
+                return arguments;
+            },
+        }.f("PASS")[0]);
+    }
+    expect: {
+        console.log([
+            function() {
+                return arguments;
+            },
+        ][0]("PASS")[0]);
+    }
+    expect_stdout: "PASS"
+    node_version: ">=4"
+}
+
+issue_4831_2: {
+    options = {
+        properties: true,
+    }
+    input: {
+        var f = {
+            f() {
+                return arguments;
+            },
+        }.f;
+        console.log(f("PASS")[0]);
+    }
+    expect: {
+        var f = {
+            f() {
+                return arguments;
+            },
+        }.f;
+        console.log(f("PASS")[0]);
+    }
+    expect_stdout: "PASS"
+    node_version: ">=4"
+}
+
+issue_4888: {
+    options = {
+        properties: true,
+    }
+    input: {
+        console.log(typeof {
+            __proto__: 42,
+        }.__proto__);
+    }
+    expect: {
+        console.log(typeof {
+            __proto__: 42,
+        }.__proto__);
+    }
+    expect_stdout: "object"
+}

@@ -198,6 +198,36 @@ global_fns: {
     ]
 }
 
+global_constructors: {
+    options = {
+        side_effects: true,
+        unsafe: true,
+    }
+    input: {
+        Map;
+        new Map(console.log("foo"));
+        Set;
+        new Set(console.log("bar"));
+        WeakMap;
+        new WeakMap(console.log("baz"));
+        WeakSet;
+        new WeakSet(console.log("moo"));
+    }
+    expect: {
+        console.log("foo");
+        console.log("bar");
+        console.log("baz");
+        console.log("moo");
+    }
+    expect_stdout: [
+        "foo",
+        "bar",
+        "baz",
+        "moo",
+    ]
+    node_version: ">=0.12"
+}
+
 unsafe_builtin_1: {
     options = {
         side_effects: true,
@@ -348,8 +378,6 @@ issue_3983_1: {
     }
     expect: {
         var a = "PASS";
-        g();
-        function g() {}
         console.log(a);
     }
     expect_stdout: "PASS"
@@ -430,6 +458,190 @@ trim_new: {
         (function(a) {
             console.log(a);
         })("PASS");
+    }
+    expect_stdout: "PASS"
+}
+
+issue_4325: {
+    options = {
+        keep_fargs: false,
+        passes: 2,
+        pure_getters: "strict",
+        reduce_vars: true,
+        side_effects: true,
+        unused: true,
+    }
+    input: {
+        (function f() {
+            (function(b, c) {
+                try {
+                    c.p = 0;
+                } catch (e) {
+                    console.log("PASS");
+                    return b;
+                }
+                c;
+            })(f++);
+        })();
+    }
+    expect: {
+        (function() {
+            (function(c) {
+                try {
+                    c.p = 0;
+                } catch (e) {
+                    console.log("PASS");
+                    return;
+                }
+            })(void 0);
+        })();
+    }
+    expect_stdout: "PASS"
+}
+
+issue_4366_1: {
+    options = {
+        side_effects: true,
+    }
+    input: {
+        ({
+            p: 42,
+            get p() {},
+            q: console.log("PASS"),
+        });
+    }
+    expect: {
+        console.log("PASS");
+    }
+    expect_stdout: "PASS"
+    node_version: ">=4"
+}
+
+issue_4366_2: {
+    options = {
+        side_effects: true,
+    }
+    input: {
+        ({
+            set p(v) {},
+            q: console.log("PASS"),
+            p: 42,
+        });
+    }
+    expect: {
+        console.log("PASS");
+    }
+    expect_stdout: "PASS"
+    node_version: ">=4"
+}
+
+issue_4668: {
+    options = {
+        conditionals: true,
+        keep_fargs: false,
+        keep_fnames: true,
+        reduce_vars: true,
+        side_effects: true,
+        toplevel: true,
+        unused: true,
+    }
+    input: {
+        function f(a) {
+            var b, c;
+            function g() {
+                return a = 0 + a, !d || (a = 0);
+            }
+            c = g();
+        }
+        console.log(f());
+        var d = 0;
+    }
+    expect: {
+        console.log(function f() {
+            (function g() {
+                0;
+            })();
+        }());
+    }
+    expect_stdout: "undefined"
+}
+
+drop_side_effect_free_call: {
+    options = {
+        inline: true,
+        reduce_vars: true,
+        side_effects: true,
+        toplevel: true,
+    }
+    input: {
+        function f(a) {
+            return "PA" + a;
+        }
+        f(42);
+        console.log(f("SS"));
+    }
+    expect: {
+        function f(a) {
+            return "PA" + a;
+        }
+        console.log(f("SS"));
+    }
+    expect_stdout: "PASS"
+}
+
+issue_4730_1: {
+    options = {
+        pure_getters: "strict",
+        side_effects: true,
+    }
+    input: {
+        var a;
+        console.log("PASS") + (a && a[a.p]);
+    }
+    expect: {
+        var a;
+        console.log("PASS"),
+        a && a[a.p];
+    }
+    expect_stdout: "PASS"
+}
+
+issue_4730_2: {
+    options = {
+        pure_getters: "strict",
+        side_effects: true,
+    }
+    input: {
+        var a;
+        !console.log("PASS") || a && a[a.p];
+    }
+    expect: {
+        var a;
+        !console.log("PASS") || a && a[a.p];
+    }
+    expect_stdout: "PASS"
+}
+
+issue_4751: {
+    options = {
+        pure_getters: "strict",
+        side_effects: true,
+    }
+    input: {
+        var o = {
+            get p() {
+                console.log("PASS");
+            },
+        };
+        o && o.p;
+    }
+    expect: {
+        var o = {
+            get p() {
+                console.log("PASS");
+            },
+        };
+        o && o.p;
     }
     expect_stdout: "PASS"
 }

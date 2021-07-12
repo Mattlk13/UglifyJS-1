@@ -1292,6 +1292,7 @@ toplevel_on_loops_3: {
         loops: true,
         reduce_funcs: true,
         reduce_vars: true,
+        side_effects: true,
         toplevel: true,
         unused: true,
     }
@@ -1999,7 +2000,7 @@ issue_1606: {
             var a, b;
             function g(){};
             b = 2;
-            x(b);
+            x(2);
         }
     }
 }
@@ -2072,72 +2073,6 @@ issue_1670_2: {
 
 issue_1670_3: {
     options = {
-        comparisons: true,
-        conditionals: true,
-        dead_code: true,
-        evaluate: true,
-        reduce_funcs: true,
-        reduce_vars: true,
-        side_effects: true,
-        switches: true,
-        typeofs: true,
-        unused: true,
-    }
-    input: {
-        (function f() {
-            switch (1) {
-              case 0:
-                var a = true;
-                break;
-              case 1:
-                if (typeof a === "undefined") console.log("PASS");
-                else console.log("FAIL");
-            }
-        })();
-    }
-    expect: {
-        (function() {
-            var a;
-            void 0 === a ? console.log("PASS") : console.log("FAIL");
-        })();
-    }
-    expect_stdout: "PASS"
-}
-
-issue_1670_4: {
-    options = {
-        conditionals: true,
-        dead_code: true,
-        evaluate: true,
-        passes: 2,
-        reduce_funcs: true,
-        reduce_vars: true,
-        side_effects: true,
-        switches: true,
-        unused: true,
-    }
-    input: {
-        (function f() {
-            switch (1) {
-              case 0:
-                var a = true;
-                break;
-              case 1:
-                if (typeof a === "undefined") console.log("PASS");
-                else console.log("FAIL");
-            }
-        })();
-    }
-    expect: {
-        (function() {
-            console.log("PASS");
-        })();
-    }
-    expect_stdout: "PASS"
-}
-
-issue_1670_5: {
-    options = {
         conditionals: true,
         dead_code: true,
         evaluate: true,
@@ -2168,7 +2103,7 @@ issue_1670_5: {
     expect_stdout: "1"
 }
 
-issue_1670_6: {
+issue_1670_4: {
     options = {
         conditionals: true,
         dead_code: true,
@@ -2373,7 +2308,7 @@ redefine_farg_1: {
         function f(a) {
             return typeof a;
         }
-        function g() {
+        function g(a) {
             return "number";
         }
         function h(a, b) {
@@ -2460,6 +2395,7 @@ delay_def: {
         evaluate: true,
         reduce_funcs: true,
         reduce_vars: true,
+        side_effects: true,
         unused: true,
     }
     input: {
@@ -3157,7 +3093,7 @@ accessor_1: {
                 a = 2;
                 return a;
             },
-            b: 1
+            b: 1,
         }.b, a);
     }
     expect: {
@@ -3167,7 +3103,7 @@ accessor_1: {
                 a = 2;
                 return a;
             },
-            b: 1
+            b: 1,
         }.b, a);
     }
     expect_stdout: "1 1"
@@ -3187,7 +3123,7 @@ accessor_2: {
         var B = {
             get c() {
                 console.log(A);
-            }
+            },
         };
         B.c;
     }
@@ -3195,7 +3131,7 @@ accessor_2: {
         ({
             get c() {
                 console.log(1);
-            }
+            },
         }).c;
     }
     expect_stdout: "1"
@@ -3241,7 +3177,7 @@ obj_var_1: {
         var obj = {
             bar: function() {
                 return C + C;
-            }
+            },
         };
         console.log(obj.bar());
     }
@@ -3249,7 +3185,7 @@ obj_var_1: {
         console.log({
             bar: function() {
                 return 2;
-            }
+            },
         }.bar());
     }
     expect_stdout: "2"
@@ -3273,7 +3209,7 @@ obj_var_2: {
         var obj = {
             bar: function() {
                 return C + C;
-            }
+            },
         };
         console.log(obj.bar());
     }
@@ -4487,6 +4423,7 @@ perf_2: {
 
 perf_3: {
     options = {
+        passes: 2,
         reduce_funcs: true,
         reduce_vars: true,
         toplevel: true,
@@ -4495,10 +4432,10 @@ perf_3: {
     input: {
         var foo = function(x, y, z) {
             return x < y ? x * y + z : x * z - y;
-        }
+        };
         var indirect_foo = function(x, y, z) {
             return foo(x, y, z);
-        }
+        };
         var sum = 0;
         for (var i = 0; i < 100; ++i)
             sum += indirect_foo(i, i + 1, 3 * i);
@@ -4527,10 +4464,10 @@ perf_4: {
     input: {
         var foo = function(x, y, z) {
             return x < y ? x * y + z : x * z - y;
-        }
+        };
         var indirect_foo = function(x, y, z) {
             return foo(x, y, z);
-        }
+        };
         var sum = 0;
         for (var i = 0; i < 100; ++i)
             sum += indirect_foo(i, i + 1, 3 * i);
@@ -4539,10 +4476,10 @@ perf_4: {
     expect: {
         var foo = function(x, y, z) {
             return x < y ? x * y + z : x * z - y;
-        }
+        };
         var indirect_foo = function(x, y, z) {
             return foo(x, y, z);
-        }
+        };
         var sum = 0;
         for (var i = 0; i < 100; ++i)
             sum += indirect_foo(i, i + 1, 3 * i);
@@ -4631,9 +4568,9 @@ perf_7: {
         var indirect_foo = function(x, y, z) {
             var foo = function(x, y, z) {
                 return x < y ? x * y + z : x * z - y;
-            }
+            };
             return foo(x, y, z);
-        }
+        };
         var sum = 0;
         for (var i = 0; i < 100; ++i)
             sum += indirect_foo(i, i + 1, 3 * i);
@@ -4663,9 +4600,9 @@ perf_8: {
         var indirect_foo = function(x, y, z) {
             var foo = function(x, y, z) {
                 return x < y ? x * y + z : x * z - y;
-            }
+            };
             return foo(x, y, z);
-        }
+        };
         var sum = 0;
         for (var i = 0; i < 100; ++i)
             sum += indirect_foo(i, i + 1, 3 * i);
@@ -4676,7 +4613,7 @@ perf_8: {
             return function(x, y, z) {
                 return x < y ? x * y + z : x * z - y;
             }(x, y, z);
-        }
+        };
         var sum = 0;
         for (var i = 0; i < 100; ++i)
             sum += indirect_foo(i, i + 1, 3 * i);
@@ -6928,7 +6865,7 @@ issue_3622: {
     options = {
         evaluate: true,
         inline: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
         reduce_vars: true,
         sequences: true,
         toplevel: true,
@@ -7196,7 +7133,7 @@ issue_3894: {
 issue_3922: {
     options = {
         evaluate: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
         pure_getters: "strict",
         reduce_vars: true,
         side_effects: true,
@@ -7600,4 +7537,238 @@ issue_4188_2: {
         })();
     }
     expect_stdout: "number undefined"
+}
+
+issue_4568: {
+    options = {
+        booleans: true,
+        conditionals: true,
+        dead_code: true,
+        evaluate: true,
+        loops: true,
+        passes: 2,
+        reduce_vars: true,
+        sequences: true,
+        unused: true,
+    }
+    input: {
+        (function(a) {
+            a && console.log("FAIL");
+            if (1)
+                do {
+                    if (!console.log("PASS")) break;
+                } while (1);
+        })(!(0 !== delete NaN));
+    }
+    expect: {
+        (function(a) {
+            for (a && console.log("FAIL"), 1; console.log("PASS"); ) 1;
+        })(!(0 !== delete NaN));
+    }
+    expect_stdout: "PASS"
+}
+
+issue_4937: {
+    options = {
+        reduce_vars: true,
+        toplevel: true,
+        unused: true,
+    }
+    input: {
+        function f() {
+            while (console.log("PASS"));
+        }
+        do {
+            function g() {
+                f();
+            }
+        } while (!g);
+        f();
+    }
+    expect: {
+        function f() {
+            while (console.log("PASS"));
+        }
+        do {
+            function g() {
+                f();
+            }
+        } while (!g);
+        f();
+    }
+    expect_stdout: "PASS"
+}
+
+issue_4943_1: {
+    options = {
+        evaluate: true,
+        reduce_vars: true,
+        toplevel: true,
+    }
+    input: {
+        var a, b = 1;
+        (function f() {
+            a = "foo";
+            b-- && f();
+            console.log(a);
+            a = "bar";
+        })();
+    }
+    expect: {
+        var a, b = 1;
+        (function f() {
+            a = "foo";
+            b-- && f();
+            console.log(a);
+            a = "bar";
+        })();
+    }
+    expect_stdout: [
+        "foo",
+        "bar",
+    ]
+}
+
+issue_4943_2: {
+    options = {
+        reduce_vars: true,
+        toplevel: true,
+        unused: true,
+    }
+    input: {
+        var a, b = 1;
+        (function f() {
+            a = "foo";
+            b-- && f();
+            console.log(a);
+            a = "bar";
+        })();
+    }
+    expect: {
+        var a, b = 1;
+        (function f() {
+            a = "foo";
+            b-- && f();
+            console.log(a);
+            a = "bar";
+        })();
+    }
+    expect_stdout: [
+        "foo",
+        "bar",
+    ]
+}
+
+issue_4949: {
+    options = {
+        reduce_vars: true,
+        unused: true,
+    }
+    input: {
+        (function f(a) {
+            a = 0;
+            console.log(a++, arguments[0]);
+        })(0);
+    }
+    expect: {
+        (function(a) {
+            a = 0;
+            console.log(a++, arguments[0]);
+        })(0);
+    }
+    expect_stdout: "0 1"
+}
+
+issue_5048: {
+    options = {
+        reduce_funcs: true,
+        reduce_vars: true,
+        unused: true,
+    }
+    input: {
+        console.log(function() {
+            var a = function() {
+                return a + 42;
+            };
+        }());
+    }
+    expect: {
+        console.log(function() {}());
+    }
+    expect_stdout: "undefined"
+}
+
+issue_5050: {
+    options = {
+        evaluate: true,
+        reduce_vars: true,
+        toplevel: true,
+    }
+    input: {
+        function f() {
+            console.log(a);
+        }
+        this;
+        var a = 1;
+        f(console.log(2), f(), a = 3);
+    }
+    expect: {
+        function f() {
+            console.log(a);
+        }
+        this;
+        var a = 1;
+        f(console.log(2), f(), a = 3);
+    }
+    expect_stdout: [
+        "2",
+        "1",
+        "3",
+    ]
+}
+
+issue_5055_1: {
+    options = {
+        evaluate: true,
+        reduce_vars: true,
+        toplevel: true,
+    }
+    input: {
+        var a = "PASS";
+        function f() {
+            console.log(a || "FAIL");
+        }
+        f(0 && (a = 0)(f(this)));
+    }
+    expect: {
+        var a = "PASS";
+        function f() {
+            console.log(a || "FAIL");
+        }
+        f(0);
+    }
+    expect_stdout: "PASS"
+}
+
+issue_5055_2: {
+    options = {
+        reduce_vars: true,
+        toplevel: true,
+        unused: true,
+    }
+    input: {
+        var a = "PASS";
+        function f() {
+            console.log(a || "FAIL");
+        }
+        f(0 && (a = 0)(f(this)));
+    }
+    expect: {
+        var a = "PASS";
+        function f() {
+            console.log(a || "FAIL");
+        }
+        f(0 && (a = 0)(f()));
+    }
+    expect_stdout: "PASS"
 }

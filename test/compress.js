@@ -1,6 +1,6 @@
 "use strict";
 
-require("../tools/exit");
+require("../tools/tty");
 
 var assert = require("assert");
 var child_process = require("child_process");
@@ -10,33 +10,38 @@ var sandbox = require("./sandbox");
 var semver = require("semver");
 var U = require("./node");
 
-var file = process.argv[2];
+var batch = 50;
 var dir = path.resolve(path.dirname(module.filename), "compress");
-if (file) {
+if (process.argv.length > 3) {
+    var file = process.argv[2];
+    var start = process.argv[3] | 0;
     var minify_options = require("./ufuzz/options.json").map(JSON.stringify);
-    log("--- {file}", { file: file });
     var tests = parse_test(path.resolve(dir, file));
-    process.exit(Object.keys(tests).filter(function(name) {
+    process.exit(Object.keys(tests).slice(start, start + batch).filter(function(name) {
         return !test_case(tests[name]);
     }).length);
 } else {
-    var files = fs.readdirSync(dir).filter(function(name) {
+    var files = process.argv.length == 3 ? [ process.argv[2] ] : fs.readdirSync(dir).filter(function(name) {
         return /\.js$/i.test(name);
     });
     var failures = 0;
     var failed_files = Object.create(null);
-    (function next() {
-        var file = files.shift();
-        if (file) {
-            child_process.spawn(process.argv[0], [ process.argv[1], file ], {
+    (function next(file, start, length) {
+        if (start < length) {
+            child_process.spawn(process.argv[0], [ process.argv[1], file, start, batch ], {
                 stdio: [ "ignore", 1, 2 ]
             }).on("exit", function(code) {
                 if (code) {
                     failures += code;
-                    failed_files[file] = code;
+                    failed_files[file] = true;
                 }
-                next();
+                next(file, start + batch, length);
             });
+        } else if (file = files.shift()) {
+            log("--- {file}", { file: file });
+            start = 0;
+            length = Object.keys(parse_test(path.resolve(dir, file))).length;
+            next(file, start, length);
         } else if (failures) {
             console.error();
             console.error("!!! Failed " + failures + " test case(s).");
@@ -63,7 +68,6 @@ function make_code(ast, options) {
 
 function parse_test(file) {
     var script = fs.readFileSync(file, "utf8");
-    // TODO try/catch can be removed after fixing https://github.com/mishoo/UglifyJS/issues/348
     try {
         var ast = U.parse(script, {
             filename: file
@@ -210,7 +214,7 @@ function reminify(orig_options, input_code, input_formatted, stdout) {
         } else {
             var toplevel = sandbox.has_toplevel(options);
             var expected = stdout[toplevel ? 1 : 0];
-            var actual = run_code(result.code, toplevel);
+            var actual = sandbox.run_code(result.code, toplevel);
             if (typeof expected != "string" && typeof actual != "string" && expected.name == actual.name) {
                 actual = expected;
             }
@@ -245,11 +249,6 @@ function reminify(orig_options, input_code, input_formatted, stdout) {
     return true;
 }
 
-function run_code(code, toplevel) {
-    var result = sandbox.run_code(code, toplevel);
-    return typeof result == "string" ? result.replace(/\u001b\[\d+m/g, "") : result;
-}
-
 function test_case(test) {
     log("    Running test [{name}]", { name: test.name });
     U.AST_Node.enable_validation();
@@ -263,6 +262,7 @@ function test_case(test) {
     var input = to_toplevel(test.input, test.mangle);
     var input_code = make_code(input);
     var input_formatted = make_code(test.input, {
+        annotations: true,
         beautify: true,
         comments: "all",
         keep_quoted_props: true,
@@ -381,7 +381,7 @@ function test_case(test) {
         }
     }
     if (test.expect_stdout && (!test.node_version || semver.satisfies(process.version, test.node_version))) {
-        var stdout = [ run_code(input_code), run_code(input_code, true) ];
+        var stdout = [ sandbox.run_code(input_code), sandbox.run_code(input_code, true) ];
         var toplevel = sandbox.has_toplevel({
             compress: test.options,
             mangle: test.mangle
@@ -410,7 +410,7 @@ function test_case(test) {
             });
             return false;
         }
-        actual = run_code(output_code, toplevel);
+        actual = sandbox.run_code(output_code, toplevel);
         if (!sandbox.same_stdout(test.expect_stdout, actual)) {
             log([
                 "!!! failed",

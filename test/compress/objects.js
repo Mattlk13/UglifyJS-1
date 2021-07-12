@@ -45,8 +45,8 @@ duplicate_key_strict: {
         "use strict";
         var o = {
             a: 1,
-            b: 2,
             a: 3,
+            b: 2,
         };
         for (var k in o)
             console.log(k, o[k]);
@@ -220,4 +220,304 @@ numeric_literal: {
         "4 5 4 4",
         "8 7 8",
     ]
+}
+
+evaluate_computed_key: {
+    options = {
+        evaluate: true,
+        objects: true,
+    }
+    input: {
+        console.log({
+            ["foo" + "bar"]: "PASS",
+        }.foobar);
+    }
+    expect: {
+        console.log({
+            foobar: "PASS",
+        }.foobar);
+    }
+    expect_stdout: "PASS"
+    node_version: ">=4"
+}
+
+keep_computed_key: {
+    options = {
+        side_effects: true,
+    }
+    input: {
+        ({
+            [console.log("PASS")]: 42,
+        });
+    }
+    expect: {
+        console.log("PASS");
+    }
+    expect_stdout: "PASS"
+    node_version: ">=4"
+}
+
+shorthand_keywords: {
+    options = {
+        evaluate: true,
+        reduce_vars: true,
+        toplevel: true,
+        unsafe: true,
+        unused: true,
+    }
+    input: {
+        var async = 1, get = 2, set = 3, o = {
+            async,
+            get,
+            set,
+        };
+        console.log(o.async, o.get, o.set);
+    }
+    expect: {
+        console.log(1, 2, 3);
+    }
+    expect_stdout: "1 2 3"
+    node_version: ">=6"
+}
+
+object_super: {
+    input: {
+        var o = {
+            f() {
+                return super.p;
+            },
+            p: "FAIL",
+        };
+        Object.setPrototypeOf(o, { p: "PASS" });
+        console.log(o.f());
+    }
+    expect_exact: 'var o={f(){return super.p},p:"FAIL"};Object.setPrototypeOf(o,{p:"PASS"});console.log(o.f());'
+    expect_stdout: "PASS"
+    node_version: ">=4"
+}
+
+object_super_async: {
+    input: {
+        var o = {
+            async f() {
+                return super.p;
+            },
+            p: "FAIL",
+        };
+        Object.setPrototypeOf(o, { p: "PASS" });
+        o.f().then(console.log);
+    }
+    expect_exact: 'var o={async f(){return super.p},p:"FAIL"};Object.setPrototypeOf(o,{p:"PASS"});o.f().then(console.log);'
+    expect_stdout: "PASS"
+    node_version: ">=8"
+}
+
+object_super_generator: {
+    input: {
+        var o = {
+            *f() {
+                yield super.p;
+            },
+            p: "FAIL",
+        };
+        Object.setPrototypeOf(o, { p: "PASS" });
+        console.log(o.f().next().value);
+    }
+    expect_exact: 'var o={*f(){yield super.p},p:"FAIL"};Object.setPrototypeOf(o,{p:"PASS"});console.log(o.f().next().value);'
+    expect_stdout: "PASS"
+    node_version: ">=4"
+}
+
+object_super_async_generator: {
+    input: {
+        var o = {
+            async *f() {
+                return super.p;
+            },
+            p: "FAIL",
+        };
+        Object.setPrototypeOf(o, { p: "PASS" });
+        o.f().next().then(function(v) {
+            console.log(v.value, v.done);
+        });
+    }
+    expect_exact: 'var o={async*f(){return super.p},p:"FAIL"};Object.setPrototypeOf(o,{p:"PASS"});o.f().next().then(function(v){console.log(v.value,v.done)});'
+    expect_stdout: "PASS true"
+    node_version: ">=10"
+}
+
+issue_4269_1: {
+    options = {
+        evaluate: true,
+        objects: true,
+    }
+    input: {
+        console.log({
+            get 0() {
+                return "FAIL";
+            },
+            [0]: "PASS",
+        }[0]);
+    }
+    expect: {
+        console.log({
+            get 0() {
+                return "FAIL";
+            },
+            [0]: "PASS",
+        }[0]);
+    }
+    expect_stdout: "PASS"
+    node_version: ">=4"
+}
+
+issue_4269_2: {
+    options = {
+        evaluate: true,
+        objects: true,
+    }
+    input: {
+        console.log({
+            get [0]() {
+                return "FAIL";
+            },
+            0: "PASS",
+        }[0]);
+    }
+    expect: {
+        console.log({
+            get [0]() {
+                return "FAIL";
+            },
+            0: "PASS",
+        }[0]);
+    }
+    expect_stdout: "PASS"
+    node_version: ">=4"
+}
+
+issue_4269_3: {
+    options = {
+        evaluate: true,
+        objects: true,
+    }
+    input: {
+        console.log({
+            ["foo"]: "bar",
+            get 42() {
+                return "FAIL";
+            },
+            42: "PASS",
+        }[42]);
+    }
+    expect: {
+        console.log({
+            foo: "bar",
+            get [42]() {
+                return "FAIL";
+            },
+            42: "PASS",
+        }[42]);
+    }
+    expect_stdout: "PASS"
+    node_version: ">=4"
+}
+
+issue_4269_4: {
+    options = {
+        evaluate: true,
+        objects: true,
+    }
+    input: {
+        console.log({
+            get 42() {
+                return "FAIL";
+            },
+            ["foo"]: "bar",
+            42: "PASS",
+        }[42]);
+    }
+    expect: {
+        console.log({
+            get 42() {
+                return "FAIL";
+            },
+            foo: "bar",
+            [42]: "PASS",
+        }[42]);
+    }
+    expect_stdout: "PASS"
+    node_version: ">=4"
+}
+
+issue_4269_5: {
+    options = {
+        evaluate: true,
+        objects: true,
+    }
+    input: {
+        console.log({
+            get 42() {
+                return "FAIL";
+            },
+            [console]: "bar",
+            42: "PASS",
+        }[42]);
+    }
+    expect: {
+        console.log({
+            get 42() {
+                return "FAIL";
+            },
+            [console]: "bar",
+            42: "PASS",
+        }[42]);
+    }
+    expect_stdout: "PASS"
+    node_version: ">=4"
+}
+
+issue_4380: {
+    options = {
+        evaluate: true,
+        objects: true,
+    }
+    input: {
+        console.log({
+            get 0() {
+                return "FAIL 1";
+            },
+            0: "FAIL 2",
+            [0]: "PASS",
+        }[0]);
+    }
+    expect: {
+        console.log({
+            get 0() {
+                return "FAIL 1";
+            },
+            [0]: ("FAIL 2", "PASS"),
+        }[0]);
+    }
+    expect_stdout: "PASS"
+    node_version: ">=4"
+}
+
+issue_4415: {
+    options = {
+        evaluate: true,
+        objects: true,
+    }
+    input: {
+        console.log({
+            ["00"]: "FAIL",
+        }[0] || "PASS");
+    }
+    expect: {
+        console.log({
+            "00": "FAIL",
+        }[0] || "PASS");
+    }
+    expect_stdout: "PASS"
+    node_version: ">=4"
 }

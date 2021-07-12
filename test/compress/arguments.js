@@ -78,12 +78,13 @@ replace_index_strict: {
     ]
 }
 
-replace_index_keep_fargs: {
+replace_index_drop_fargs_1: {
     options = {
         arguments: true,
         evaluate: true,
         keep_fargs: false,
         properties: true,
+        reduce_vars: true,
     }
     input: {
         var arguments = [];
@@ -101,6 +102,13 @@ replace_index_keep_fargs: {
             var arguments;
             console.log(arguments[1], arguments["1"], arguments["foo"]);
         })("bar", 42);
+        (function() {
+            var arguments = {
+                1: "foo",
+                foo: "bar",
+            };
+            console.log(arguments[1], arguments["1"], arguments["foo"]);
+        })("bar", 42);
     }
     expect: {
         var arguments = [];
@@ -112,10 +120,17 @@ replace_index_keep_fargs: {
             console.log(b, b, arguments.foo);
         })("bar", 42);
         (function(arguments) {
-            console.log(arguments[1], arguments[1], arguments.foo);
+            console.log("bar"[1], "bar"[1], "bar".foo);
+        })("bar", 42);
+        (function(argument_0, argument_1) {
+            var arguments;
+            console.log(argument_1, argument_1, arguments.foo);
         })("bar", 42);
         (function() {
-            var arguments;
+            var arguments = {
+                1: "foo",
+                foo: "bar",
+            };
             console.log(arguments[1], arguments[1], arguments.foo);
         })("bar", 42);
     }
@@ -125,10 +140,11 @@ replace_index_keep_fargs: {
         "42 42 undefined",
         "a a undefined",
         "42 42 undefined",
+        "foo foo bar",
     ]
 }
 
-replace_index_keep_fargs_strict: {
+replace_index_drop_fargs_2: {
     options = {
         arguments: true,
         evaluate: true,
@@ -236,6 +252,25 @@ duplicate_argname: {
         })("foo", 42, "bar");
     }
     expect_stdout: "bar 42 foo 42 bar"
+}
+
+fraction: {
+    options = {
+        arguments: true,
+        keep_fargs: false,
+        reduce_vars: true,
+    }
+    input: {
+        console.log(function() {
+            return arguments[0.3];
+        }("FAIL") || "PASS");
+    }
+    expect: {
+        console.log(function() {
+            return arguments[0.3];
+        }("FAIL") || "PASS");
+    }
+    expect_stdout: "PASS"
 }
 
 issue_3273: {
@@ -412,7 +447,7 @@ issue_3273_global_strict_reduce_vars: {
     ]
 }
 
-issue_3273_keep_fargs_false: {
+issue_3273_drop_fargs_1: {
     options = {
         arguments: true,
         keep_fargs: false,
@@ -435,10 +470,10 @@ issue_3273_keep_fargs_false: {
     expect_stdout: "1"
 }
 
-issue_3273_keep_fargs_strict: {
+issue_3273_drop_fargs_2: {
     options = {
         arguments: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
         reduce_vars: true,
     }
     input: {
@@ -633,7 +668,8 @@ issue_3282_2_passes: {
 issue_3420_1: {
     options = {
         arguments: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
+        reduce_vars: true,
     }
     input: {
         console.log(function() {
@@ -655,7 +691,8 @@ issue_3420_1: {
 issue_3420_2: {
     options = {
         arguments: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
+        reduce_vars: true,
     }
     input: {
         var foo = function() {
@@ -675,7 +712,8 @@ issue_3420_2: {
 issue_3420_3: {
     options = {
         arguments: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
+        reduce_vars: true,
     }
     input: {
         "use strict";
@@ -697,7 +735,8 @@ issue_3420_3: {
 issue_3420_4: {
     options = {
         arguments: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
+        reduce_vars: true,
     }
     input: {
         !function() {
@@ -722,7 +761,8 @@ issue_3420_4: {
 issue_3420_5: {
     options = {
         arguments: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
+        reduce_vars: true,
     }
     input: {
         "use strict";
@@ -749,7 +789,8 @@ issue_3420_5: {
 issue_3420_6: {
     options = {
         arguments: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
+        reduce_vars: true,
     }
     input: {
         console.log(function() {
@@ -767,7 +808,8 @@ issue_3420_6: {
 issue_3420_7: {
     options = {
         arguments: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
+        reduce_vars: true,
     }
     input: {
         "use strict";
@@ -806,4 +848,207 @@ issue_4200: {
         console.log(o.p);
     }
     expect_stdout: "undefined"
+}
+
+issue_4291_1: {
+    options = {
+        arguments: true,
+        keep_fargs: false,
+        reduce_vars: true,
+    }
+    input: {
+        console.log(function() {
+            arguments[0] = "PASS";
+            return arguments;
+        }()[0]);
+    }
+    expect: {
+        console.log(function() {
+            arguments[0] = "PASS";
+            return arguments;
+        }()[0]);
+    }
+    expect_stdout: "PASS"
+}
+
+issue_4291_2: {
+    options = {
+        arguments: true,
+        keep_fargs: false,
+        reduce_vars: true,
+    }
+    input: {
+        var a = function() {
+            if (arguments[0])
+                arguments[1] = "PASS";
+            return arguments;
+        }(42);
+        console.log(a[1], a[0], a.length);
+    }
+    expect: {
+        var a = function() {
+            if (arguments[0])
+                arguments[1] = "PASS";
+            return arguments;
+        }(42);
+        console.log(a[1], a[0], a.length);
+    }
+    expect_stdout: "PASS 42 1"
+}
+
+issue_4397: {
+    options = {
+        arguments: true,
+        keep_fargs: false,
+        reduce_vars: true,
+    }
+    input: {
+        console.log(typeof function() {
+            arguments += 0;
+            return arguments[0];
+        }());
+    }
+    expect: {
+        console.log(typeof function() {
+            arguments += 0;
+            return arguments[0];
+        }());
+    }
+    expect_stdout: "string"
+}
+
+issue_4410_1: {
+    options = {
+        arguments: true,
+        conditionals: true,
+        evaluate: true,
+        reduce_vars: true,
+    }
+    input: {
+        (function(a) {
+            console.log(arguments[0] === (a = 0) ? "FAIL" : "PASS");
+        })(1);
+    }
+    expect: {
+        (function(a) {
+            console.log(a === (a = 0) ? "FAIL" : "PASS");
+        })(1);
+    }
+    expect_stdout: "PASS"
+}
+
+issue_4410_2: {
+    options = {
+        arguments: true,
+        conditionals: true,
+        evaluate: true,
+        reduce_vars: true,
+    }
+    input: {
+        (function f(a) {
+            console.log(arguments[0] === (a = 0) ? "FAIL" : "PASS");
+        })(1);
+    }
+    expect: {
+        (function f(a) {
+            console.log(arguments[0] === (a = 0) ? "FAIL" : "PASS");
+        })(1);
+    }
+    expect_stdout: "PASS"
+}
+
+issue_4410_3: {
+    options = {
+        arguments: true,
+    }
+    input: {
+        var a = 1;
+        (function f(b) {
+            a-- && f();
+            for (var c = 2; c--;)
+                switch (arguments[0]) {
+                  case b = 42:
+                  case 42:
+                    console.log("PASS");
+                }
+        })(null);
+    }
+    expect: {
+        var a = 1;
+        (function f(b) {
+            a-- && f();
+            for (var c = 2; c--;)
+                switch (arguments[0]) {
+                  case b = 42:
+                  case 42:
+                    console.log("PASS");
+                }
+        })(null);
+    }
+    expect_stdout: "PASS"
+}
+
+issue_4432: {
+    options = {
+        arguments: true,
+        reduce_vars: true,
+    }
+    input: {
+        console.log(function(a) {
+            for (a in { FAIL: 42 });
+            return arguments[0];
+        }() || "PASS");
+    }
+    expect: {
+        console.log(function(a) {
+            for (a in { FAIL: 42 });
+            return arguments[0];
+        }() || "PASS");
+    }
+    expect_stdout: "PASS"
+}
+
+issue_4696: {
+    options = {
+        arguments: true,
+        keep_fargs: false,
+    }
+    input: {
+        console.log(function() {
+            for (arguments in [ 42 ]);
+            for (var a in arguments[0])
+                return "PASS";
+        }());
+    }
+    expect: {
+        console.log(function() {
+            for (arguments in [ 42 ]);
+            for (var a in arguments[0])
+                return "PASS";
+        }());
+    }
+    expect_stdout: "PASS"
+}
+
+issue_4809: {
+    options = {
+        arguments: true,
+        keep_fargs: false,
+        reduce_vars: true,
+    }
+    input: {
+        A = 0;
+        (function() {
+            arguments[A] = "PASS";
+            console.log(arguments[0]);
+        })();
+    }
+    expect: {
+        A = 0;
+        (function() {
+            arguments[A] = "PASS";
+            console.log(arguments[0]);
+        })();
+    }
+    expect_stdout: "PASS"
 }

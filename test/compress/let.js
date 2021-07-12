@@ -20,6 +20,59 @@ retain_block: {
     node_version: ">=4"
 }
 
+retain_assignment: {
+    options = {
+        dead_code: true,
+        reduce_vars: true,
+    }
+    input: {
+        "use strict";
+        function f() {
+            return a = 0;
+            let a;
+        }
+        try {
+            f();
+        } catch (e) {
+            console.log("PASS");
+        }
+    }
+    expect: {
+        "use strict";
+        function f() {
+            return a = 0;
+            let a;
+        }
+        try {
+            f();
+        } catch (e) {
+            console.log("PASS");
+        }
+    }
+    expect_stdout: "PASS"
+    node_version: ">=4"
+}
+
+retain_catch: {
+    options = {
+        dead_code: true,
+    }
+    input: {
+        "use strict";
+        try {} catch (a) {
+            let a = "aa";
+        }
+    }
+    expect: {
+        "use strict";
+        try {} catch (a) {
+            let a = "aa";
+        }
+    }
+    expect_stdout: true
+    node_version: ">=4"
+}
+
 if_dead_branch: {
     options = {
         conditionals: true,
@@ -339,6 +392,143 @@ reduce_block_2_toplevel: {
     node_version: ">=4"
 }
 
+reduce_vars_1: {
+    options = {
+        evaluate: true,
+        reduce_vars: true,
+        toplevel: true,
+        unused: true,
+    }
+    input: {
+        "use strict";
+        let a = "PASS";
+        console.log(a);
+        a = "FAIL";
+    }
+    expect: {
+        "use strict";
+        console.log("PASS");
+        "FAIL";
+    }
+    expect_stdout: "PASS"
+    node_version: ">=4"
+}
+
+reduce_vars_2: {
+    options = {
+        reduce_funcs: true,
+        reduce_vars: true,
+        unused: true,
+    }
+    input: {
+        "use strict";
+        (function() {
+            function f() {
+                console.log(typeof a);
+            }
+            for (let a in [ 42 ])
+                f();
+        })();
+    }
+    expect: {
+        "use strict";
+        (function() {
+            function f() {
+                console.log(typeof a);
+            }
+            for (let a in [ 42 ])
+                f();
+        })();
+    }
+    expect_stdout: "undefined"
+    node_version: ">=4"
+}
+
+reduce_vars_3: {
+    options = {
+        reduce_funcs: true,
+        reduce_vars: true,
+        unused: true,
+    }
+    input: {
+        "use strict";
+        (function(a) {
+            let i = 1;
+            function f() {
+                i = 0;
+            }
+            for (let i = 0, x = 0; i < a.length; i++, x++) {
+                if (x != i) {
+                    console.log("FAIL");
+                    break;
+                }
+                f();
+                console.log(a[i]);
+            }
+            console.log(i);
+        })([ 4, 2 ]);
+    }
+    expect: {
+        "use strict";
+        (function(a) {
+            let i = 1;
+            function f() {
+                i = 0;
+            }
+            for (let i = 0, x = 0; i < a.length; i++, x++) {
+                if (x != i) {
+                    console.log("FAIL");
+                    break;
+                }
+                f();
+                console.log(a[i]);
+            }
+            console.log(i);
+        })([ 4, 2 ]);
+    }
+    expect_stdout: [
+        "4",
+        "2",
+        "0",
+    ]
+    node_version: ">=4"
+}
+
+reduce_lambda: {
+    options = {
+        evaluate: true,
+        functions: true,
+        reduce_vars: true,
+        toplevel: true,
+        unused: true,
+    }
+    input: {
+        "use strict";
+        let f = function() {
+            console.log(a, b);
+        };
+        let a = "foo", b = 42;
+        f();
+        b = "bar";
+        f();
+    }
+    expect: {
+        "use strict";
+        function f() {
+            console.log("foo", b);
+        }
+        let b = 42;
+        f();
+        b = "bar";
+        f();
+    }
+    expect_stdout: [
+        "foo 42",
+        "foo bar",
+    ]
+    node_version: ">=4"
+}
+
 hoist_props: {
     options = {
         hoist_props: true,
@@ -414,6 +604,38 @@ loop_block_2: {
     node_version: ">=4"
 }
 
+do_break: {
+    options = {
+        loops: true,
+    }
+    input: {
+        "use strict";
+        try {
+            do {
+                if (a)
+                    break;
+                let a;
+            } while (!console);
+        } catch (e) {
+            console.log("PASS");
+        }
+    }
+    expect: {
+        "use strict";
+        try {
+            do {
+                if (a)
+                    break;
+                let a;
+            } while (!console);
+        } catch (e) {
+            console.log("PASS");
+        }
+    }
+    expect_stdout: "PASS"
+    node_version: ">=4"
+}
+
 do_continue: {
     options = {
         loops: true,
@@ -469,6 +691,82 @@ dead_block_after_return: {
                 let a;
             }
         })("PASS");
+    }
+    expect_stdout: "PASS"
+    node_version: ">=4"
+}
+
+if_return_1: {
+    options = {
+        if_return: true,
+    }
+    input: {
+        "use strict";
+        function f(a) {
+            function g() {
+                return b = "PASS";
+            }
+            if (a)
+                return g();
+            let b;
+            return g();
+        };
+        console.log(f());
+    }
+    expect: {
+        "use strict";
+        function f(a) {
+            function g() {
+                return b = "PASS";
+            }
+            if (a)
+                return g();
+            let b;
+            return g();
+        };
+        console.log(f());
+    }
+    expect_stdout: "PASS"
+    node_version: ">=4"
+}
+
+if_return_2: {
+    options = {
+        if_return: true,
+    }
+    input: {
+        "use strict";
+        function f(a) {
+            function g() {
+                return b = "FAIL";
+            }
+            if (a)
+                return g();
+            let b;
+            return g();
+        };
+        try {
+            console.log(f(42));
+        } catch (e) {
+            console.log("PASS");
+        }
+    }
+    expect: {
+        "use strict";
+        function f(a) {
+            function g() {
+                return b = "FAIL";
+            }
+            if (a)
+                return g();
+            let b;
+            return g();
+        };
+        try {
+            console.log(f(42));
+        } catch (e) {
+            console.log("PASS");
+        }
     }
     expect_stdout: "PASS"
     node_version: ">=4"
@@ -565,6 +863,28 @@ drop_unused: {
         console.log(f());
     }
     expect_stdout: "undefined"
+    node_version: ">=4"
+}
+
+default_init: {
+    options = {
+        evaluate: true,
+        reduce_vars: true,
+        sequences: true,
+        toplevel: true,
+        unused: true,
+    }
+    input: {
+        "use strict";
+        let a;
+        a = "PASS";
+        console.log(a);
+    }
+    expect: {
+        "use strict";
+        console.log("PASS");
+    }
+    expect_stdout: "PASS"
     node_version: ">=4"
 }
 
@@ -753,6 +1073,7 @@ issue_4210: {
 issue_4212_1: {
     options = {
         dead_code: true,
+        reduce_vars: true,
     }
     input: {
         "use strict";
@@ -948,5 +1269,481 @@ issue_4248: {
         }
     }
     expect_stdout: "PASS"
+    node_version: ">=4"
+}
+
+issue_4274_1: {
+    options = {
+        loops: true,
+    }
+    input: {
+        "use strict";
+        for (;;) {
+            if (console.log("PASS")) {
+                let a;
+            } else {
+                break;
+                var a;
+            }
+        }
+    }
+    expect: {
+        "use strict";
+        for (; console.log("PASS");) {
+            {
+                let a;
+            }
+            var a;
+        }
+    }
+    expect_stdout: "PASS"
+    node_version: ">=4"
+}
+
+issue_4274_2: {
+    options = {
+        loops: true,
+    }
+    input: {
+        "use strict";
+        for (;;) {
+            if (!console.log("PASS")) {
+                break;
+                var a;
+            } else {
+                let a;
+            }
+        }
+    }
+    expect: {
+        "use strict";
+        for (; console.log("PASS");) {
+            {
+                let a;
+            }
+            var a;
+        }
+    }
+    expect_stdout: "PASS"
+    node_version: ">=4"
+}
+
+issue_4276_1: {
+    options = {
+        unused: true,
+    }
+    input: {
+        "use strict";
+        try {
+            let a = b, b;
+            console.log("FAIL");
+        } catch (e) {
+            console.log("PASS");
+        }
+    }
+    expect: {
+        "use strict";
+        try {
+            let a = b, b;
+            console.log("FAIL");
+        } catch (e) {
+            console.log("PASS");
+        }
+    }
+    expect_stdout: "PASS"
+    node_version: ">=4"
+}
+
+issue_4276_2: {
+    options = {
+        unused: true,
+    }
+    input: {
+        "use strict";
+        try {
+            let a = f(), b;
+            console.log("FAIL");
+            function f() {
+                return b;
+            }
+        } catch (e) {
+            console.log("PASS");
+        }
+    }
+    expect: {
+        "use strict";
+        try {
+            let a = f(), b;
+            console.log("FAIL");
+            function f() {
+                return b;
+            }
+        } catch (e) {
+            console.log("PASS");
+        }
+    }
+    expect_stdout: "PASS"
+    node_version: ">=4"
+}
+
+issue_4290_1: {
+    options = {
+        unused: true,
+    }
+    input: {
+        "use strict";
+        let a;
+        var a;
+    }
+    expect: {
+        "use strict";
+        let a;
+        var a;
+    }
+    expect_stdout: true
+    node_version: ">=4"
+}
+
+issue_4290_2: {
+    options = {
+        collapse_vars: true,
+    }
+    input: {
+        "use strict";
+        try {
+            console.log(function(a) {
+                a = c;
+                let c;
+                return a;
+            }());
+        } catch (e) {
+            console.log("PASS");
+        }
+    }
+    expect: {
+        "use strict";
+        try {
+            console.log(function(a) {
+                a = c;
+                let c;
+                return a;
+            }());
+        } catch (e) {
+            console.log("PASS");
+        }
+    }
+    expect_stdout: "PASS"
+    node_version: ">=4"
+}
+
+issue_4305_1: {
+    options = {
+        reduce_vars: true,
+        unused: true,
+    }
+    input: {
+        (function() {
+            let arguments = function() {
+                while (console.log("PASS"));
+            };
+            arguments();
+        })();
+    }
+    expect: {
+        (function() {
+            let arguments = function() {
+                while (console.log("PASS"));
+            };
+            arguments();
+        })();
+    }
+    expect_stdout: true
+    node_version: ">=6"
+}
+
+issue_4305_2: {
+    options = {
+        reduce_vars: true,
+        unused: true,
+    }
+    input: {
+        "use strict";
+        (function(a) {
+            let a = function() {
+                while (console.log("aaaaa"));
+            };
+            a();
+        })();
+    }
+    expect: {
+        "use strict";
+        (function(a) {
+            let a = function() {
+                while (console.log("aaaaa"));
+            };
+            a();
+        })();
+    }
+    expect_stdout: true
+    node_version: ">=4"
+}
+
+issue_1753: {
+    mangle = {
+        toplevel: false,
+        webkit: true,
+    }
+    input: {
+        "use strict";
+        let l = null;
+        for (let i = 0; i < 1; i++)
+            console.log(i);
+    }
+    expect: {
+        "use strict";
+        let l = null;
+        for (let i = 0; i < 1; i++)
+            console.log(i);
+    }
+    expect_stdout: "0"
+    node_version: ">=4"
+}
+
+issue_1753_toplevel: {
+    mangle = {
+        toplevel: true,
+        webkit: true,
+    }
+    input: {
+        "use strict";
+        let l = null;
+        for (let i = 0; i < 1; i++)
+            console.log(i);
+    }
+    expect: {
+        "use strict";
+        let l = null;
+        for (let e = 0; e < 1; e++)
+            console.log(e);
+    }
+    expect_stdout: "0"
+    node_version: ">=4"
+}
+
+issue_4438: {
+    options = {
+        if_return: true,
+    }
+    input: {
+        "use strict";
+        function f() {
+            if (console) {
+                {
+                    let a = console.log;
+                    return void a("PASS");
+                }
+            }
+        }
+        f();
+    }
+    expect: {
+        "use strict";
+        function f() {
+            if (!console)
+                ;
+            else {
+                let a = console.log;
+                a("PASS");
+            }
+        }
+        f();
+    }
+    expect_stdout: "PASS"
+    node_version: ">=4"
+}
+
+issue_4531_1: {
+    mangle = {
+        ie8: true,
+        toplevel: true,
+    }
+    input: {
+        "use strict";
+        var a;
+        console.log(function a() {
+            let a;
+            var b;
+        }());
+    }
+    expect: {
+        "use strict";
+        var o;
+        console.log(function o() {
+            let o;
+            var t;
+        }());
+    }
+    expect_stdout: "undefined"
+    node_version: ">=4"
+}
+
+issue_4531_2: {
+    options = {
+        evaluate: true,
+        ie8: true,
+        toplevel: true,
+    }
+    mangle = {
+        ie8: true,
+        toplevel: true,
+    }
+    input: {
+        var a = console;
+        console.log(typeof a, function a() {
+            let { [console]: a } = 0 && a;
+            var b = console;
+            while (!b);
+        }());
+    }
+    expect: {
+        var o = console;
+        console.log(typeof o, function o() {
+            let { [console]: o } = 0;
+            var e = console;
+            while (!e);
+        }());
+    }
+    expect_stdout: "object undefined"
+    node_version: ">=6"
+}
+
+issue_4689: {
+    options = {
+        sequences: true,
+    }
+    input: {
+        "use strict";
+        var a = "PASS";
+        console.log(a);
+        for (let a in 42);
+    }
+    expect: {
+        "use strict";
+        var a = "PASS";
+        console.log(a);
+        for (let a in 42);
+    }
+    expect_stdout: "PASS"
+    node_version: ">=4"
+}
+
+issue_4691: {
+    options = {
+        if_return: true,
+        toplevel: true,
+    }
+    input: {
+        "use strict";
+        function A() {}
+        A.prototype.f = function() {
+            if (!this)
+                return;
+            let a = "PA";
+            function g(b) {
+                h(a + b);
+            }
+            [ "SS" ].forEach(function(c) {
+                g(c);
+            });
+        };
+        function h(d) {
+            console.log(d);
+        }
+        new A().f();
+    }
+    expect: {
+        "use strict";
+        function A() {}
+        A.prototype.f = function() {
+            if (this) {
+                let a = "PA";
+                [ "SS" ].forEach(function(c) {
+                    g(c);
+                });
+                function g(b) {
+                    h(a + b);
+                }
+            }
+        };
+        function h(d) {
+            console.log(d);
+        }
+        new A().f();
+    }
+    expect_stdout: "PASS"
+    node_version: ">=4"
+}
+
+issue_4848: {
+    options = {
+        if_return: true,
+    }
+    input: {
+        "use strict";
+        function f(a) {
+            a(function() {
+                console.log(b);
+            });
+            if (!console)
+                return;
+            let b = "PASS";
+        }
+        var g;
+        f(function(h) {
+            g = h;
+        });
+        g();
+    }
+    expect: {
+        "use strict";
+        function f(a) {
+            a(function() {
+                console.log(b);
+            });
+            if (!console)
+                return;
+            let b = "PASS";
+        }
+        var g;
+        f(function(h) {
+            g = h;
+        });
+        g();
+    }
+    expect_stdout: "PASS"
+    node_version: ">=4"
+}
+
+issue_4985: {
+    options = {
+        hoist_props: true,
+        reduce_vars: true,
+        toplevel: true,
+    }
+    input: {
+        "use strict";
+        let a = { p: 42 };
+        console.log(function() {
+            a;
+        }());
+    }
+    expect: {
+        "use strict";
+        let a = { p: 42 };
+        console.log(function() {
+            a;
+        }());
+    }
+    expect_stdout: "undefined"
     node_version: ">=4"
 }

@@ -19,43 +19,6 @@ keep_fargs_false: {
         console.log(h(), i().length, j.length);
     }
     expect: {
-        console.log(function f() {
-            return f.length;
-        }(), function g() {
-            return g;
-        }().length);
-        function h() {
-            return h.length;
-        }
-        function i() {
-            return i;
-        }
-        function j() {}
-        console.log(h(), i().length, j.length);
-    }
-}
-
-keep_fargs_strict: {
-    options = {
-        keep_fargs: "strict",
-        unused: true,
-    }
-    input: {
-        console.log(function f(a) {
-            return f.length;
-        }(), function g(b) {
-            return g;
-        }().length);
-        function h(c) {
-            return h.length;
-        }
-        function i(d) {
-            return i;
-        }
-        function j(e) {}
-        console.log(h(), i().length, j.length);
-    }
-    expect: {
         console.log(function f(a) {
             return f.length;
         }(), function g(b) {
@@ -117,61 +80,11 @@ keep_fargs_true: {
     ]
 }
 
-replace_index: {
-    options = {
-        arguments: true,
-        evaluate: true,
-        keep_fargs: "strict",
-        properties: true,
-    }
-    input: {
-        var arguments = [];
-        console.log(arguments[0]);
-        (function() {
-            console.log(arguments[1], arguments["1"], arguments["foo"]);
-        })("bar", 42);
-        (function(a, b) {
-            console.log(arguments[1], arguments["1"], arguments["foo"]);
-        })("bar", 42);
-        (function(arguments) {
-            console.log(arguments[1], arguments["1"], arguments["foo"]);
-        })("bar", 42);
-        (function() {
-            var arguments;
-            console.log(arguments[1], arguments["1"], arguments["foo"]);
-        })("bar", 42);
-    }
-    expect: {
-        var arguments = [];
-        console.log(arguments[0]);
-        (function(argument_0, argument_1) {
-            console.log(argument_1, argument_1, arguments.foo);
-        })("bar", 42);
-        (function(a, b) {
-            console.log(b, b, arguments.foo);
-        })("bar", 42);
-        (function(arguments) {
-            console.log(arguments[1], arguments[1], arguments.foo);
-        })("bar", 42);
-        (function() {
-            var arguments;
-            console.log(arguments[1], arguments[1], arguments.foo);
-        })("bar", 42);
-    }
-    expect_stdout: [
-        "undefined",
-        "42 42 undefined",
-        "42 42 undefined",
-        "a a undefined",
-        "42 42 undefined",
-    ]
-}
-
 replace_index_strict: {
     options = {
         arguments: true,
         evaluate: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
         properties: true,
         reduce_vars: true,
     }
@@ -202,8 +115,9 @@ replace_index_strict: {
 issue_1858: {
     options = {
         collapse_vars: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
         pure_getters: true,
+        reduce_vars: true,
         unused: true,
     }
     input: {
@@ -224,7 +138,7 @@ issue_1858: {
 issue_2187_2: {
     options = {
         collapse_vars: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
         unused: true,
     }
     input: {
@@ -245,7 +159,7 @@ issue_2187_2: {
 issue_2203_2: {
     options = {
         collapse_vars: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
         unused: true,
     }
     input: {
@@ -280,7 +194,7 @@ issue_2203_2: {
 issue_2298: {
     options = {
         collapse_vars: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
         passes: 2,
         reduce_funcs: true,
         reduce_vars: true,
@@ -323,7 +237,7 @@ issue_2298: {
 issue_2319_1: {
     options = {
         collapse_vars: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
         unused: true,
     }
     input: {
@@ -346,7 +260,7 @@ issue_2319_1: {
 issue_2319_2: {
     options = {
         collapse_vars: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
         unused: true,
     }
     input: {
@@ -371,7 +285,7 @@ issue_2319_2: {
 issue_2319_3: {
     options = {
         collapse_vars: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
         unused: true,
     }
     input: {
@@ -396,7 +310,7 @@ issue_2319_3: {
 issue_2425_1: {
     options = {
         collapse_vars: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
         unused: true,
     }
     input: {
@@ -419,7 +333,7 @@ issue_2425_1: {
 issue_2425_2: {
     options = {
         collapse_vars: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
         unused: true,
     }
     input: {
@@ -442,7 +356,7 @@ issue_2425_2: {
 issue_2425_3: {
     options = {
         collapse_vars: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
         unused: true,
     }
     input: {
@@ -465,7 +379,7 @@ issue_2425_3: {
 issue_2436_13: {
     options = {
         collapse_vars: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
         passes: 2,
         reduce_vars: true,
         unused: true,
@@ -499,7 +413,7 @@ issue_2436_13: {
 issue_2506: {
     options = {
         collapse_vars: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
         passes: 2,
         reduce_vars: true,
         unused: true,
@@ -538,7 +452,7 @@ issue_2506: {
 
 issue_2226_1: {
     options = {
-        keep_fargs: "strict",
+        keep_fargs: false,
         side_effects: true,
         unused: true,
     }
@@ -585,7 +499,7 @@ issue_2226_1: {
 issue_2226_2: {
     options = {
         collapse_vars: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
         sequences: true,
         side_effects: true,
         unused: true,
@@ -607,7 +521,7 @@ issue_2226_2: {
 issue_2226_3: {
     options = {
         collapse_vars: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
         side_effects: true,
         unused: true,
     }
@@ -627,7 +541,7 @@ issue_2226_3: {
 
 issue_3192: {
     options = {
-        keep_fargs: "strict",
+        keep_fargs: false,
         unused: true,
     }
     input: {
@@ -657,7 +571,7 @@ issue_3192: {
 if_increment: {
     options = {
         evaluate: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
         reduce_vars: true,
         unused: true,
     }
@@ -679,7 +593,7 @@ if_increment: {
 try_increment: {
     options = {
         evaluate: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
         reduce_vars: true,
         unused: true,
     }
@@ -703,7 +617,7 @@ try_increment: {
 issue_2630_3: {
     options = {
         inline: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
         reduce_vars: true,
         unused: true,
     }
@@ -740,7 +654,7 @@ issue_2630_3: {
 issue_3364: {
     options = {
         functions: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
         reduce_vars: true,
         toplevel: true,
         unused: true,
@@ -805,7 +719,7 @@ issue_3364: {
 
 defun_label: {
     options = {
-        keep_fargs: "strict",
+        keep_fargs: false,
         passes: 2,
         reduce_funcs: true,
         reduce_vars: true,
@@ -837,7 +751,7 @@ defun_label: {
 
 iife_func_side_effects: {
     options = {
-        keep_fargs: "strict",
+        keep_fargs: false,
         reduce_funcs: true,
         reduce_vars: true,
         unused: true,
@@ -889,7 +803,7 @@ iife_func_side_effects: {
 issue_1595_1: {
     options = {
         evaluate: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
         reduce_funcs: true,
         reduce_vars: true,
         unused: true,
@@ -909,7 +823,7 @@ issue_1595_1: {
 issue_1595_2: {
     options = {
         evaluate: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
         reduce_funcs: true,
         reduce_vars: true,
         unused: true,
@@ -929,7 +843,7 @@ issue_1595_2: {
 issue_1595_3: {
     options = {
         evaluate: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
         passes: 2,
         reduce_funcs: true,
         reduce_vars: true,
@@ -950,7 +864,7 @@ issue_1595_3: {
 issue_1595_4: {
     options = {
         evaluate: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
         reduce_funcs: true,
         reduce_vars: true,
         unused: true,
@@ -972,7 +886,7 @@ issue_1595_4: {
 
 duplicate_lambda_defun_name_1: {
     options = {
-        keep_fargs: "strict",
+        keep_fargs: false,
         reduce_vars: true,
     }
     input: {
@@ -992,7 +906,7 @@ duplicate_lambda_defun_name_1: {
 
 duplicate_lambda_defun_name_2: {
     options = {
-        keep_fargs: "strict",
+        keep_fargs: false,
         passes: 2,
         reduce_vars: true,
         unused: true,
@@ -1013,7 +927,7 @@ duplicate_lambda_defun_name_2: {
 
 function_name_mangle: {
     options = {
-        keep_fargs: "strict",
+        keep_fargs: false,
         keep_fnames: true,
         reduce_vars: true,
         unused: true,
@@ -1031,7 +945,7 @@ function_name_mangle: {
 
 function_name_mangle_ie8: {
     options = {
-        keep_fargs: "strict",
+        keep_fargs: false,
         keep_fnames: true,
         reduce_vars: true,
         unused: true,
@@ -1052,7 +966,7 @@ function_name_mangle_ie8: {
 
 issue_3420_1: {
     options = {
-        keep_fargs: "strict",
+        keep_fargs: false,
         unused: true,
     }
     input: {
@@ -1075,7 +989,7 @@ issue_3420_1: {
 issue_3420_2: {
     options = {
         inline: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
         unused: true,
     }
     input: {
@@ -1096,7 +1010,7 @@ issue_3420_2: {
 issue_3420_3: {
     options = {
         inline: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
         reduce_vars: true,
         unused: true,
     }
@@ -1118,7 +1032,7 @@ issue_3420_3: {
 
 issue_3423_1: {
     options = {
-        keep_fargs: "strict",
+        keep_fargs: false,
         unused: true,
     }
     input: {
@@ -1138,7 +1052,7 @@ issue_3423_1: {
 
 issue_3423_2: {
     options = {
-        keep_fargs: "strict",
+        keep_fargs: false,
         unused: true,
     }
     input: {
@@ -1165,7 +1079,7 @@ collapse_vars_repeated: {
         hoist_funs: true,
         if_return: true,
         join_vars: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
         loops: true,
         properties: true,
         reduce_funcs: true,
@@ -1212,7 +1126,7 @@ collapse_vars_repeated: {
 chained_3: {
     options = {
         collapse_vars: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
         unused: true,
     }
     input: {
@@ -1236,7 +1150,7 @@ replace_all_var_scope: {
     rename = true
     options = {
         collapse_vars: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
         unused: true,
     }
     mangle = {}
@@ -1244,8 +1158,8 @@ replace_all_var_scope: {
         var a = 100, b = 10;
         (function(r, a) {
             switch (~a) {
-            case (b += a):
-            case a++:
+              case (b += a):
+              case a++:
             }
         })(--b, a);
         console.log(a, b);
@@ -1254,8 +1168,8 @@ replace_all_var_scope: {
         var a = 100, b = 10;
         (function(c) {
             switch (~a) {
-            case (b += a):
-            case c++:
+              case (b += a):
+              case c++:
             }
         })((--b, a));
         console.log(a, b);
@@ -1265,7 +1179,7 @@ replace_all_var_scope: {
 
 issue_1583: {
     options = {
-        keep_fargs: "strict",
+        keep_fargs: false,
         passes: 2,
         reduce_funcs: true,
         reduce_vars: true,
@@ -1302,7 +1216,7 @@ issues_3267_1: {
         dead_code: true,
         evaluate: true,
         inline: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
         reduce_vars: true,
         sequences: true,
         side_effects: true,
@@ -1331,7 +1245,7 @@ issues_3267_1: {
 
 trailing_argument_side_effects: {
     options = {
-        keep_fargs: "strict",
+        keep_fargs: false,
         unused: true,
     }
     input: {
@@ -1355,7 +1269,7 @@ trailing_argument_side_effects: {
 
 recursive_iife_1: {
     options = {
-        keep_fargs: "strict",
+        keep_fargs: false,
         reduce_vars: true,
         unused: true,
     }
@@ -1374,7 +1288,7 @@ recursive_iife_1: {
 
 recursive_iife_2: {
     options = {
-        keep_fargs: "strict",
+        keep_fargs: false,
         reduce_vars: true,
         unused: true,
     }
@@ -1449,6 +1363,40 @@ issue_3619: {
             g();
         })();
         console.log(b);
+    }
+    expect_stdout: "PASS"
+}
+
+issue_4353_1: {
+    options = {
+        keep_fargs: false,
+        reduce_vars: true,
+        unused: true,
+    }
+    input: {
+        console.log(function f(a) {}.length);
+    }
+    expect: {
+        console.log(function(a) {}.length);
+    }
+    expect_stdout: "1"
+}
+
+issue_4353_2: {
+    options = {
+        keep_fargs: false,
+        reduce_vars: true,
+        unused: true,
+    }
+    input: {
+        (function f(a) {
+            while (console.log("PASS"));
+        })();
+    }
+    expect: {
+        (function() {
+            while (console.log("PASS"));
+        })();
     }
     expect_stdout: "PASS"
 }

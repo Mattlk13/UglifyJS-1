@@ -790,7 +790,7 @@ issue_3795: {
         dead_code: true,
         evaluate: true,
         join_vars: true,
-        keep_fargs: "strict",
+        keep_fargs: false,
         loops: true,
         passes: 2,
         reduce_vars: true,
@@ -1015,7 +1015,7 @@ issue_3856: {
         console.log(function() {
             (function() {
                 var a, b;
-                if (a) return !!a;
+                if (a) return a, 1;
                 for (a = 0; !console;);
                 return 0;
             })();
@@ -1024,7 +1024,7 @@ issue_3856: {
     expect_stdout: "undefined"
 }
 
-issue_3916: {
+issue_3916_1: {
     options = {
         join_vars: true,
     }
@@ -1044,8 +1044,8 @@ issue_3916: {
         var o = {
             p: "PASS",
             __proto__: 42,
-            q: "FAIL",
         };
+        o.q = "FAIL";
         o.__proto__ = {
             p: "FAIL",
             q: "PASS",
@@ -1054,4 +1054,132 @@ issue_3916: {
         console.log(typeof o.__proto__, o.p, delete o.q, o.q);
     }
     expect_stdout: "object PASS true PASS"
+}
+
+issue_3916_2: {
+    options = {
+        join_vars: true,
+    }
+    input: {
+        var log = console.log, o = {};
+        o.p = "FAIL 1";
+        o.__proto__ = {
+            get p() {
+                return "FAIL 2";
+            },
+            set p(u) {
+                log("FAIL 3");
+            },
+            set q(v) {
+                log("PASS 1");
+            },
+            get q() {
+                return "PASS 3";
+            },
+        };
+        o.p = "PASS 2";
+        o.q = "FAIL 4";
+        log(o.p);
+        log(o.q);
+    }
+    expect: {
+        var log = console.log, o = {
+            p: "FAIL 1",
+            __proto__: {
+                get p() {
+                    return "FAIL 2";
+                },
+                set p(u) {
+                    log("FAIL 3");
+                },
+                set q(v) {
+                    log("PASS 1");
+                },
+                get q() {
+                    return "PASS 3";
+                },
+            },
+        };
+        o.p = "PASS 2";
+        o.q = "FAIL 4";
+        log(o.p);
+        log(o.q);
+    }
+    expect_stdout: [
+        "PASS 1",
+        "PASS 2",
+        "PASS 3",
+    ]
+}
+
+assign_var: {
+    options = {
+        join_vars: true,
+    }
+    input: {
+        b = "foo";
+        var a = [ , "bar" ];
+        console.log(b);
+        for (var b in a)
+            console.log(b, a[b]);
+    }
+    expect: {
+        var b = "foo", a = [ , "bar" ], b;
+        console.log(b);
+        for (b in a)
+            console.log(b, a[b]);
+    }
+    expect_stdout: [
+        "foo",
+        "1 bar",
+    ]
+}
+
+assign_for_var: {
+    options = {
+        join_vars: true,
+    }
+    input: {
+        i = "foo",
+        a = new Array(i, "bar");
+        for (var i = 2; --i >= 0;) {
+            console.log(a[i]);
+            for (var a in i);
+        }
+    }
+    expect: {
+        for (var i = "foo", a = new Array(i, "bar"), i = 2; --i >= 0;) {
+            console.log(a[i]);
+            for (var a in i);
+        }
+    }
+    expect_stdout: [
+        "bar",
+        "foo",
+    ]
+}
+
+assign_sequence_var: {
+    options = {
+        join_vars: true,
+    }
+    input: {
+        var a = 0, b = 1;
+        console.log(a),
+        a++,
+        b = 2;
+        var c = 3;
+        console.log(a, b, c);
+    }
+    expect: {
+        var a = 0, b = 1;
+        console.log(a),
+        a++;
+        var b = 2, c = 3;
+        console.log(a, b, c);
+    }
+    expect_stdout: [
+        "0",
+        "1 2 3",
+    ]
 }

@@ -327,7 +327,7 @@ issue_4103: {
 
 issue_4107: {
     options = {
-        keep_fargs: "strict",
+        keep_fargs: false,
         merge_vars: true,
         reduce_vars: true,
         unused: true,
@@ -2620,9 +2620,9 @@ issue_4126_1: {
             try {
                 console.log("PASS");
             } catch (e) {
-                var b = a;
+                var c = a;
             } finally {
-                var c = b;
+                var c = c;
             }
             console.log(c);
         }
@@ -2735,8 +2735,7 @@ issue_4135: {
         0;
         a++;
         if (!a)
-            c = (a++, c = 0, void (c && c.p));
-        var c;
+            var c = void a++;
         console.log(a, -1, c);
     }
     expect_stdout: "1 -1 undefined"
@@ -3075,7 +3074,7 @@ issue_4237_2: {
         console.log(function(a) {
             do {
                 switch (0) {
-                  case 0:
+                  default:
                     var b = a++;
                     if (b)
                         return "FAIL";
@@ -3091,4 +3090,290 @@ issue_4237_2: {
         }(0));
     }
     expect_stdout: "PASS"
+}
+
+issue_4253: {
+    options = {
+        merge_vars: true,
+        toplevel: true,
+    }
+    input: {
+        switch (0) {
+          default:
+            var a = "FAIL";
+            a = a && a;
+            try {
+                break;
+            } catch (e) {}
+            var b = 42;
+        }
+        console.log(b);
+    }
+    expect: {
+        switch (0) {
+          default:
+            var a = "FAIL";
+            a = a && a;
+            try {
+                break;
+            } catch (e) {}
+            var b = 42;
+        }
+        console.log(b);
+    }
+    expect_stdout: "undefined"
+}
+
+issue_4255: {
+    options = {
+        dead_code: true,
+        loops: true,
+        merge_vars: true,
+        toplevel: true,
+    }
+    input: {
+        L: for (var a = 2; --a;)
+            for (var b = 0; console.log(b); --b)
+                break L;
+    }
+    expect: {
+        L: for (var a = 2; --a;) {
+            var b = 0;
+            if (console.log(b))
+                break L;
+        }
+    }
+    expect_stdout: "0"
+}
+
+issue_4257: {
+    options = {
+        merge_vars: true,
+        toplevel: true,
+    }
+    input: {
+        var a = 0;
+        for (var i = 0; i < 2; i++)
+            switch (--a) {
+              case 0:
+                var b = 0;
+                break;
+              case 0:
+              default:
+                var c = 1 + (0 | (b && A));
+                console.log(c);
+            }
+    }
+    expect: {
+        var a = 0;
+        for (var i = 0; i < 2; i++)
+            switch (--a) {
+              case 0:
+                var b = 0;
+                break;
+              case 0:
+              default:
+                var c = 1 + (0 | (b && A));
+                console.log(c);
+            }
+    }
+    expect_stdout: [
+        "1",
+        "1",
+    ]
+}
+
+issue_4628: {
+    options = {
+        merge_vars: true,
+    }
+    input: {
+        (function() {
+            try {
+                console;
+            } finally {
+                var b = a;
+            }
+            for (var a in "foo");
+            console.log(b);
+        })();
+    }
+    expect: {
+        (function() {
+            try {
+                console;
+            } finally {
+                var b = a;
+            }
+            for (var a in "foo");
+            console.log(b);
+        })();
+    }
+    expect_stdout: "undefined"
+}
+
+issue_4653: {
+    options = {
+        evaluate: true,
+        merge_vars: true,
+        reduce_vars: true,
+        toplevel: true,
+        unused: true,
+    }
+    input: {
+        var a = 1, b;
+        function f(c, d) {
+            c || console.log(d);
+        }
+        f(a++ + (b = b), b |= console.log(a));
+    }
+    expect: {
+        var b = 1;
+        (function(c, d) {
+            c || console.log(d);
+        })(+b + (b = void 0), b |= console.log(2));
+    }
+    expect_stdout: [
+        "2",
+        "0",
+    ]
+}
+
+issue_4759: {
+    options = {
+        merge_vars: true,
+        toplevel: true,
+    }
+    input: {
+        var i = 2, a = 1, b, c, d;
+        while (i--) {
+            try {
+                if (1 != b) {
+                    d = [];
+                    null.p;
+                    c = d;
+                } else {
+                    b = 0;
+                    a = c;
+                }
+            } catch (e) {}
+            b = a;
+        }
+        console.log(a);
+    }
+    expect: {
+        var i = 2, a = 1, b, c, d;
+        while (i--) {
+            try {
+                if (1 != b) {
+                    d = [];
+                    null.p;
+                    c = d;
+                } else {
+                    b = 0;
+                    a = c;
+                }
+            } catch (e) {}
+            b = a;
+        }
+        console.log(a);
+    }
+    expect_stdout: "undefined"
+}
+
+issue_4761: {
+    options = {
+        merge_vars: true,
+        toplevel: true,
+    }
+    input: {
+        var a = "FAIL", b;
+        try {
+            !a && --a && (b = 0)[console] || console.log(b);
+        } catch (e) {}
+    }
+    expect: {
+        var a = "FAIL", b;
+        try {
+            !a && --a && (b = 0)[console] || console.log(b);
+        } catch (e) {}
+    }
+    expect_stdout: "undefined"
+}
+
+issue_4956_1: {
+    options = {
+        merge_vars: true,
+        toplevel: true,
+    }
+    input: {
+        var a, b;
+        function f(c) {
+            switch (c) {
+              case 0:
+                a = { p: 42 };
+
+              case 1:
+                b = a.p;
+                console.log(b);
+            }
+        }
+        f(0);
+        f(1);
+    }
+    expect: {
+        var a, b;
+        function f(c) {
+            switch (c) {
+              case 0:
+                a = { p: 42 };
+
+              case 1:
+                b = a.p;
+                console.log(b);
+            }
+        }
+        f(0);
+        f(1);
+    }
+    expect_stdout: [
+        "42",
+        "42",
+    ]
+}
+
+issue_4956_2: {
+    options = {
+        merge_vars: true,
+        toplevel: true,
+    }
+    input: {
+        var a, b;
+        function f(c) {
+            if (0 == c) {
+                console;
+                a = { p: 42 };
+            }
+            b = a.p;
+            if (1 == c)
+                console.log(b);
+        }
+        f(0);
+        f(1);
+    }
+    expect: {
+        var a, b;
+        function f(c) {
+            if (0 == c) {
+                console;
+                a = { p: 42 };
+            }
+            b = a.p;
+            if (1 == c)
+                console.log(b);
+        }
+        f(0);
+        f(1);
+    }
+    expect_stdout: "42"
 }

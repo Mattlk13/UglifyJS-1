@@ -426,6 +426,7 @@ wrap_iife_in_return_call: {
 
 pure_annotation_1: {
     options = {
+        annotations: true,
         inline: true,
         side_effects: true,
     }
@@ -439,6 +440,7 @@ pure_annotation_1: {
 
 pure_annotation_2: {
     options = {
+        annotations: true,
         collapse_vars: true,
         inline: true,
         side_effects: true,
@@ -463,15 +465,19 @@ drop_fargs: {
         var a = 1;
         !function(a_1) {
             a++;
-        }(a++ + (a && a.var));
+        }(a++ + (a && console.log(a)));
         console.log(a);
     }
     expect: {
         var a = 1;
-        ++a && a.var, a++;
+        ++a && console.log(a),
+        a++;
         console.log(a);
     }
-    expect_stdout: "3"
+    expect_stdout: [
+        "2",
+        "3",
+    ]
 }
 
 keep_fargs: {
@@ -486,13 +492,17 @@ keep_fargs: {
         var a = 1;
         !function(a_1) {
             a++;
-        }(a++ + (a && a.var));
+        }(a++ + (a && console.log(a)));
         console.log(a);
     }
     expect: {
         var a = 1;
-        ++a && a.var, a++;
+        ++a && console.log(a),
+        a++;
         console.log(a);
     }
-    expect_stdout: "3"
+    expect_stdout: [
+        "2",
+        "3",
+    ]
 }

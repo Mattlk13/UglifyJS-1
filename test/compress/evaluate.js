@@ -399,18 +399,18 @@ unsafe_object_accessor: {
         function f() {
             var a = {
                 get b() {},
-                set b() {}
+                set b(v) {},
             };
-            return {a:a};
+            return { a: a };
         }
     }
     expect: {
         function f() {
             var a = {
                 get b() {},
-                set b() {}
+                set b(v) {},
             };
-            return {a:a};
+            return { a: a };
         }
     }
 }
@@ -684,25 +684,47 @@ prototype_function: {
         side_effects: true,
     }
     input: {
-        var a = ({valueOf: 0}) < 1;
-        var b = ({toString: 0}) < 1;
-        var c = ({valueOf: 0}) + "";
-        var d = ({toString: 0}) + "";
-        var e = (({valueOf: 0}) + "")[2];
-        var f = (({toString: 0}) + "")[2];
-        var g = ({valueOf: 0}).valueOf();
-        var h = ({toString: 0}).toString();
+        function v() {
+            return this.valueOf === v ? "PASS" : "FAIL";
+        }
+        console.log(({ valueOf: v }) < 1);
+        console.log(({ valueOf: v }) + "");
+        console.log((( {valueOf: v }) + "")[2]);
+        console.log(({ valueOf: v }).valueOf());
+        function t() {
+            return this.toString === t ? "PASS" : "FAIL";
+        }
+        console.log(({ toString: t }) < 1);
+        console.log(({ toString: t }) + "");
+        console.log((( {toString: t }) + "")[2]);
+        console.log(({ toString: t }).toString());
     }
     expect: {
-        var a = ({valueOf: 0}) < 1;
-        var b = ({toString: 0}) < 1;
-        var c = ({valueOf: 0}) + "";
-        var d = ({toString: 0}) + "";
-        var e = (({valueOf: 0}) + "")[2];
-        var f = (({toString: 0}) + "")[2];
-        var g = 0();
-        var h = 0();
+        function v() {
+            return this.valueOf === v ? "PASS" : "FAIL";
+        }
+        console.log(({ valueOf: v }) < 1);
+        console.log(({ valueOf: v }) + "");
+        console.log((( {valueOf: v }) + "")[2]);
+        console.log(({ valueOf: v }).valueOf());
+        function t() {
+            return this.toString === t ? "PASS" : "FAIL";
+        }
+        console.log(({ toString: t }) < 1);
+        console.log(({ toString: t }) + "");
+        console.log((( {toString: t }) + "")[2]);
+        console.log(({ toString: t }).toString());
     }
+    expect_stdout: [
+        "false",
+        "PASS",
+        "S",
+        "PASS",
+        "false",
+        "PASS",
+        "S",
+        "PASS",
+    ]
 }
 
 call_args: {
@@ -846,6 +868,8 @@ unsafe_charAt_noop: {
         unsafe: true,
     }
     input: {
+        s = "foo";
+        x = 42;
         console.log(
             s.charAt(0),
             "string".charAt(x),
@@ -853,12 +877,15 @@ unsafe_charAt_noop: {
         );
     }
     expect: {
+        s = "foo";
+        x = 42;
         console.log(
-            s[0],
-            "string"[0 | x],
-            (typeof x)[0]
+            s[0] || "",
+            "string"[0 | x] || "",
+            (typeof x)[0] || ""
         );
     }
+    expect_stdout: "f  n"
 }
 
 issue_1649: {
@@ -2800,7 +2827,7 @@ operator_in: {
         console.log("PASS" in { });
         console.log("FAIL" in { });
         console.log("toString" in { });
-        console.log(true);
+        console.log("toString" in { toString: 3 });
     }
     expect_stdout: [
         "true",
@@ -3046,4 +3073,152 @@ issue_4214: {
         console.log(c);
     }
     expect_stdout: "NaN"
+}
+
+issue_4271: {
+    options = {
+        evaluate: true,
+        unsafe: true,
+    }
+    input: {
+        ({
+            p: null,
+            q: (console.log("foo"), 42),
+            p: function() {}
+        })[console.log("bar"), "p"] && console.log("PASS");
+    }
+    expect: {
+        ({
+            p: null,
+            q: (console.log("foo"), 42),
+            p: function() {}
+        })[console.log("bar"), "p"],
+        console.log("PASS");
+    }
+    expect_stdout: [
+        "foo",
+        "bar",
+        "PASS",
+    ]
+}
+
+issue_4393: {
+    options = {
+        evaluate: true,
+        reduce_vars: true,
+    }
+    input: {
+        (function f(a) {
+            a = "PASS";
+            console.log(arguments[0]);
+        })("FAIL");
+    }
+    expect: {
+        (function f(a) {
+            a = "PASS";
+            console.log(arguments[0]);
+        })("FAIL");
+    }
+    expect_stdout: "PASS"
+}
+
+issue_4422: {
+    options = {
+        evaluate: true,
+        reduce_vars: true,
+        unused: true,
+    }
+    input: {
+        console.log(function f(a) {
+            a = "FAIL 1";
+            arguments[0] = "PASS";
+            return a;
+        }("FAIL 2"));
+    }
+    expect: {
+        console.log(function(a) {
+            a = "FAIL 1";
+            arguments[0] = "PASS";
+            return a;
+        }("FAIL 2"));
+    }
+    expect_stdout: "PASS"
+}
+
+issue_4480: {
+    options = {
+        evaluate: true,
+        reduce_vars: true,
+        unused: true,
+    }
+    input: {
+        var a = function f(b) {
+            b = "FAIL";
+            arguments[0] = "PASS";
+            var arguments = 0;
+            console.log(b);
+        }(a);
+    }
+    expect: {
+        var a = function(b) {
+            b = "FAIL";
+            arguments[0] = "PASS";
+            var arguments = 0;
+            console.log(b);
+        }(a);
+    }
+    expect_stdout: "PASS"
+}
+
+issue_4552: {
+    options = {
+        evaluate: true,
+        keep_fnames: true,
+        reduce_vars: true,
+        toplevel: true,
+        unused: true,
+    }
+    input: {
+        var a = function f(b) {
+            return function() {
+                b++;
+                try {
+                    return b;
+                } catch (e) {}
+            }();
+        }();
+        console.log(a);
+    }
+    expect: {
+        var a = function f(b) {
+            return function() {
+                b++;
+                try {
+                    return b;
+                } catch (e) {}
+            }();
+        }();
+        console.log(a);
+    }
+    expect_stdout: "NaN"
+}
+
+issue_4886: {
+    options = {
+        evaluate: true,
+        unsafe: true,
+    }
+    input: {
+        console.log("length" in {
+            __proto__: function() {},
+            length: void 0,
+        });
+    }
+    expect: {
+        console.log("length" in {
+            __proto__: function() {},
+            length: void 0,
+        });
+    }
+    expect_stdout: "true"
 }

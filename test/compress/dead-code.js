@@ -53,8 +53,10 @@ dead_code_2_should_warn: {
             g();
             x = 10;
             throw new Error("foo");
-            var x;
-            function g(){};
+            {
+                var x;
+                function g(){};
+            }
         }
         f();
     }
@@ -62,7 +64,6 @@ dead_code_2_should_warn: {
     expect_warnings: [
         "WARN: Dropping unreachable code [test/compress/dead-code.js:8,12]",
     ]
-    node_version: "<=4"
 }
 
 dead_code_constant_boolean_should_warn_more: {
@@ -88,8 +89,10 @@ dead_code_constant_boolean_should_warn_more: {
         bar();
     }
     expect: {
-        var foo;
-        function bar() {}
+        {
+            var foo;
+            function bar() {}
+        }
         // nothing for the while
         // as for the for, it should keep:
         var x = 10, y;
@@ -725,7 +728,7 @@ issue_2749: {
     expect: {
         var a = 2, c = "PASS";
         while (a--)
-            b = void 0, b ? c = "FAIL" : b = 1;
+            b = void 0, b ? c = "FAIL" : 1;
         var b;
         console.log(c);
     }
@@ -932,6 +935,185 @@ catch_return_assign: {
                 return "PASS";
             }
         }());
+    }
+    expect_stdout: "PASS"
+}
+
+catch_return_assign_may_throw: {
+    options = {
+        dead_code: true,
+    }
+    input: {
+        function f() {
+            try {
+                throw "FAIL";
+            } catch (e) {
+                return e = console.log("PASS");
+            }
+        }
+        f();
+    }
+    expect: {
+        function f() {
+            try {
+                throw "FAIL";
+            } catch (e) {
+                return console.log("PASS");
+            }
+        }
+        f();
+    }
+    expect_stdout: "PASS"
+}
+
+finally_return_assign: {
+    options = {
+        dead_code: true,
+    }
+    input: {
+        console.log(function(a) {
+            try {
+                throw "FAIL";
+            } finally {
+                return a = "PASS";
+            }
+        }());
+    }
+    expect: {
+        console.log(function(a) {
+            try {
+                throw "FAIL";
+            } finally {
+                return "PASS";
+            }
+        }());
+    }
+    expect_stdout: "PASS"
+}
+
+last_assign_statement: {
+    options = {
+        dead_code: true,
+    }
+    input: {
+        function f(a) {
+            a = a("PASS");
+        }
+        f(console.log);
+    }
+    expect: {
+        function f(a) {
+            a("PASS");
+        }
+        f(console.log);
+    }
+    expect_stdout: "PASS"
+}
+
+last_assign_if_else: {
+    options = {
+        dead_code: true,
+    }
+    input: {
+        function f(a) {
+            if (a)
+                a = console.log("foo");
+            else {
+                console.log("bar");
+                a = console.log("baz");
+            }
+        }
+        f(42);
+        f(null);
+    }
+    expect: {
+        function f(a) {
+            if (a)
+                console.log("foo");
+            else {
+                console.log("bar");
+                console.log("baz");
+            }
+        }
+        f(42);
+        f(null);
+    }
+    expect_stdout: [
+        "foo",
+        "bar",
+        "baz",
+    ]
+}
+
+last_assign_catch: {
+    options = {
+        dead_code: true,
+    }
+    input: {
+        function f() {
+            try {
+                throw "FAIL";
+            } catch (e) {
+                e = console.log("PASS");
+            }
+        }
+        f();
+    }
+    expect: {
+        function f() {
+            try {
+                throw "FAIL";
+            } catch (e) {
+                console.log("PASS");
+            }
+        }
+        f();
+    }
+    expect_stdout: "PASS"
+}
+
+last_assign_finally: {
+    options = {
+        dead_code: true,
+    }
+    input: {
+        function f(a) {
+            try {
+                throw a.log;
+            } catch (e) {
+                a = e;
+            } finally {
+                a = a("PASS");
+            }
+        }
+        f(console);
+    }
+    expect: {
+        function f(a) {
+            try {
+                throw a.log;
+            } catch (e) {
+                a = e;
+            } finally {
+                a("PASS");
+            }
+        }
+        f(console);
+    }
+    expect_stdout: "PASS"
+}
+
+consecutive_assignments: {
+    options = {
+        dead_code: true,
+    }
+    input: {
+        while (a = void 0, a = "PASS", console.log(a));
+        var a;
+    }
+    expect: {
+        while (void 0, a = "PASS", console.log(a));
+        var a;
     }
     expect_stdout: "PASS"
 }
@@ -1374,4 +1556,80 @@ issue_4051: {
         }
     }
     expect_stdout: "PASS"
+}
+
+issue_4366: {
+    options = {
+        dead_code: true,
+    }
+    input: {
+        function f() {
+            return "PASS";
+            ({
+                p: 42,
+                get p() {},
+            });
+        }
+        console.log(f());
+    }
+    expect: {
+        function f() {
+            return "PASS";
+        }
+        console.log(f());
+    }
+    expect_stdout: "PASS"
+    node_version: ">=4"
+}
+
+issue_4570: {
+    options = {
+        dead_code: true,
+        inline: true,
+    }
+    input: {
+        var a = function(b) {
+            return a += b;
+        }() ? 0 : a;
+        console.log(a);
+    }
+    expect: {
+        var a = (a += void 0) ? 0 : a;
+        console.log(a);
+    }
+    expect_stdout: "NaN"
+}
+
+issue_5030: {
+    options = {
+        dead_code: true,
+    }
+    input: {
+        (function(a, b) {
+            a = function f() {
+                if (a)
+                    if (b--)
+                        setImmediate(f);
+                    else
+                        console.log("FAIL");
+                else
+                    console.log("PASS");
+            }();
+        })(42, 1);
+    }
+    expect: {
+        (function(a, b) {
+            a = function f() {
+                if (a)
+                    if (b--)
+                        setImmediate(f);
+                    else
+                        console.log("FAIL");
+                else
+                    console.log("PASS");
+            }();
+        })(42, 1);
+    }
+    expect_stdout: "PASS"
+    node_version: ">=0.12"
 }

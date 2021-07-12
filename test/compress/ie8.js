@@ -588,7 +588,6 @@ issue_3197_1: {
         ie8: false,
     }
     input: {
-        var window = {};
         !function() {
             function Foo() {
                 console.log(this instanceof Foo);
@@ -598,7 +597,6 @@ issue_3197_1: {
         new window.Foo();
     }
     expect: {
-        var window = {};
         window.Foo = function o() {
             console.log(this instanceof o);
         };
@@ -619,7 +617,6 @@ issue_3197_1_ie8: {
         ie8: true,
     }
     input: {
-        var window = {};
         !function() {
             function Foo() {
                 console.log(this instanceof Foo);
@@ -629,7 +626,6 @@ issue_3197_1_ie8: {
         new window.Foo();
     }
     expect: {
-        var window = {};
         window.Foo = function Foo() {
             console.log(this instanceof Foo);
         };
@@ -2657,7 +2653,9 @@ issue_4019: {
             try {
                 console.log("FAIL");
             } catch (o) {}
-        }, o = (console.log(o.length), ++o);
+        };
+        console.log(o.length),
+        ++o;
     }
     expect_stdout: "0"
 }
@@ -2903,4 +2901,119 @@ issue_4250: {
         }());
     }
     expect_stdout: "0"
+}
+
+issue_4568: {
+    options = {
+        ie8: true,
+        reduce_vars: true,
+        unused: true,
+    }
+    input: {
+        console.log(typeof f, function(a) {
+            return a.length;
+        }([ function f() {} ]));
+    }
+    expect: {
+        console.log(typeof f, function(a) {
+            return a.length;
+        }([ function f() {} ]));
+    }
+    expect_stdout: "undefined 1"
+}
+
+issue_4729: {
+    options = {
+        ie8: true,
+        pure_getters: true,
+        toplevel: true,
+        unused: true,
+    }
+    input: {
+        try {
+            f;
+        } catch (e) {
+            var a = a && a[function f() {}];
+            console.log("PASS");
+        }
+    }
+    expect: {
+        try {
+            f;
+        } catch (e) {
+            (function f() {});
+            console.log("PASS");
+        }
+    }
+    expect_stdout: "PASS"
+}
+
+issue_4928_1: {
+    options = {
+        ie8: true,
+        toplevel: true,
+        unused: true,
+    }
+    input: {
+        var a = function f() {
+            f(a);
+        };
+        console.log(typeof f);
+    }
+    expect: {
+        var a = function f() {
+            f(a);
+        };
+        console.log(typeof f);
+    }
+    expect_stdout: "undefined"
+}
+
+issue_4928_2: {
+    options = {
+        ie8: true,
+        toplevel: true,
+        unused: true,
+    }
+    input: {
+        switch (42) {
+          case console:
+            var a = function f() {
+                f(a);
+            };
+          case 42:
+            var a = console.log("PASS");
+        }
+    }
+    expect: {
+        switch (42) {
+          case console:
+            var a = function f() {
+                f(a);
+            };
+          case 42:
+            a = console.log("PASS");
+        }
+    }
+    expect_stdout: "PASS"
+}
+
+issue_4958: {
+    options = {
+        collapse_vars: true,
+        ie8: true,
+    }
+    input: {
+        console.log(function arguments(a) {
+            a = 21;
+            return arguments[0] + 21;
+        }("FAIL"));
+    }
+    expect: {
+        console.log(function arguments(a) {
+            a = 21;
+            return arguments[0] + 21;
+        }("FAIL"));
+    }
+    expect_stdout: "42"
 }

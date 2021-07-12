@@ -13,6 +13,23 @@ console_log: {
     ]
 }
 
+console_log_console: {
+    input: {
+        var log = console.log;
+        log(console);
+        log(typeof console.log);
+    }
+    expect: {
+        var log = console.log;
+        log(console);
+        log(typeof console.log);
+    }
+    expect_stdout: [
+        "{ log: 'function(){}' }",
+        "function",
+    ]
+}
+
 typeof_arguments: {
     options = {
         evaluate: true,
@@ -81,6 +98,63 @@ log_global: {
     expect_stdout: "[object global]"
 }
 
+log_nested: {
+    options = {
+        unused: true,
+    }
+    input: {
+        var o = { p: 42 };
+        for (var i = 0; i < 10; i++)
+            o = {
+                p: o,
+                q: function foo() {},
+            };
+        console.log(o);
+    }
+    expect: {
+        var o = { p: 42 };
+        for (var i = 0; i < 10; i++)
+            o = {
+                p: o,
+                q: function() {},
+            };
+        console.log(o);
+    }
+    expect_stdout: true
+}
+
+timers: {
+    options = {
+        reduce_vars: true,
+        toplevel: true,
+        unused: true,
+    }
+    input: {
+        var count = 0, interval = 1000, duration = 3210;
+        var timer = setInterval(function() {
+            console.log(++count);
+        }, interval);
+        setTimeout(function() {
+            clearInterval(timer);
+        }, duration);
+    }
+    expect: {
+        var count = 0;
+        var timer = setInterval(function() {
+            console.log(++count);
+        }, 1000);
+        setTimeout(function() {
+            clearInterval(timer);
+        }, 3210);
+    }
+    expect_stdout: [
+        "1",
+        "2",
+        "3",
+    ]
+    node_version: ">=0.12"
+}
+
 issue_4054: {
     input: {
         console.log({
@@ -97,4 +171,33 @@ issue_4054: {
         });
     }
     expect_stdout: "{ p: [Setter] }"
+}
+
+issue_4811_1: {
+    input: {
+        for (var PASS in this);
+        console.log(PASS, this, {} < this);
+    }
+    expect: {
+        for (var PASS in this);
+        console.log(PASS, this, {} < this);
+    }
+    expect_stdout: "PASS [object global] true"
+}
+
+issue_4811_2: {
+    options = {
+        side_effects: true,
+    }
+    input: {
+        (async function() {});
+        for (var PASS in this);
+        console.log(PASS, this, {} < this);
+    }
+    expect: {
+        for (var PASS in this);
+        console.log(PASS, this, {} < this);
+    }
+    expect_stdout: "PASS [object global] true"
+    node_version: ">=8"
 }

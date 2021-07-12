@@ -1,49 +1,141 @@
-hex_numbers_in_parentheses_for_prototype_functions: {
+literal_infinity: {
+    input: {
+        console.log(2e308, -1e2345);
+    }
+    expect_exact: "console.log(1/0,-(1/0));"
+}
+
+parentheses_for_prototype_functions: {
     beautify = {
         beautify: true,
     }
     input: {
-        function f() {
-            (-2);
-            (-2).toFixed(0);
+        (function() {
+            console.log((-2));
+            console.log((-2).toFixed(0));
 
-            (2);
-            (2).toFixed(0);
+            console.log((2));
+            console.log((2).toFixed(0));
 
-            (0.2);
-            (0.2).toFixed(0);
+            console.log((0.2));
+            console.log((0.2).toFixed(0));
 
-            (2.34e20);
-            (2.34e20).toFixed(0);
+            console.log((2.34e20));
+            console.log((2.34e20).toFixed(0));
 
-            (0.00000002);
-            (0.00000002).toFixed(0);
+            console.log((0.00000002));
+            console.log((0.00000002).toFixed(0));
 
-            (1000000000000000128);
-            (1000000000000000128).toFixed(0);
+            console.log((1000000000000000128));
+            console.log((1000000000000000128).toFixed(0));
 
-            (-1000000000000000128);
-            (-1000000000000000128).toFixed(0);
-        }
+            console.log((-1000000000000000128));
+            console.log((-1000000000000000128).toFixed(0));
+        })();
     }
     expect_exact: [
-        "function f() {",
-        "    -2;",
-        "    (-2).toFixed(0);",
-        "    2;",
-        "    2..toFixed(0);",
-        "    .2;",
-        "    .2.toFixed(0);",
-        "    234e18;",
-        "    234e18.toFixed(0);",
-        "    2e-8;",
-        "    2e-8.toFixed(0);",
-        "    0xde0b6b3a7640080;",
-        "    (0xde0b6b3a7640080).toFixed(0);",
-        "    -0xde0b6b3a7640080;",
-        "    (-0xde0b6b3a7640080).toFixed(0);",
-        "}",
+        "(function() {",
+        "    console.log(-2);",
+        "    console.log((-2).toFixed(0));",
+        "    console.log(2);",
+        "    console.log(2..toFixed(0));",
+        "    console.log(.2);",
+        "    console.log(.2.toFixed(0));",
+        "    console.log(234e18);",
+        "    console.log(234e18.toFixed(0));",
+        "    console.log(2e-8);",
+        "    console.log(2e-8.toFixed(0));",
+        "    console.log(0xde0b6b3a7640080);",
+        "    console.log(0xde0b6b3a7640080.toFixed(0));",
+        "    console.log(-0xde0b6b3a7640080);",
+        "    console.log((-0xde0b6b3a7640080).toFixed(0));",
+        "})();",
     ]
+    expect_stdout: true
+}
+
+parentheses_for_prototype_functions_galio: {
+    beautify = {
+        beautify: true,
+        galio: true,
+    }
+    input: {
+        (function() {
+            console.log((-2));
+            console.log((-2).toFixed(0));
+
+            console.log((2));
+            console.log((2).toFixed(0));
+
+            console.log((0.2));
+            console.log((0.2).toFixed(0));
+
+            console.log((2.34e20));
+            console.log((2.34e20).toFixed(0));
+
+            console.log((0.00000002));
+            console.log((0.00000002).toFixed(0));
+
+            console.log((1000000000000000128));
+            console.log((1000000000000000128).toFixed(0));
+
+            console.log((-1000000000000000128));
+            console.log((-1000000000000000128).toFixed(0));
+        })();
+    }
+    expect_exact: [
+        "(function() {",
+        "    console.log(-2);",
+        "    console.log((-2).toFixed(0));",
+        "    console.log(2);",
+        "    console.log(2..toFixed(0));",
+        "    console.log(.2);",
+        "    console.log(.2.toFixed(0));",
+        "    console.log(234e18);",
+        "    console.log(234e18.toFixed(0));",
+        "    console.log(2e-8);",
+        "    console.log(2e-8.toFixed(0));",
+        "    console.log(0xde0b6b3a7640080);",
+        "    console.log((0xde0b6b3a7640080).toFixed(0));",
+        "    console.log(-0xde0b6b3a7640080);",
+        "    console.log((-0xde0b6b3a7640080).toFixed(0));",
+        "})();",
+    ]
+    expect_stdout: true
+}
+
+octal: {
+    beautify = {
+        beautify: true,
+    }
+    input: {
+        (function() {
+            console.log(052);
+            console.log(-052);
+
+            console.log(018);
+            console.log(-018);
+
+            console.log(052.toFixed(0));
+            console.log(-052.toFixed(0));
+
+            console.log(018..toFixed(0));
+            console.log(-018..toFixed(0));
+        })();
+    }
+    expect_exact: [
+        "(function() {",
+        "    console.log(42);",
+        "    console.log(-42);",
+        "    console.log(18);",
+        "    console.log(-18);",
+        "    console.log(42..toFixed(0));",
+        "    console.log(-42..toFixed(0));",
+        "    console.log(18..toFixed(0));",
+        "    console.log(-18..toFixed(0));",
+        "})();",
+    ]
+    expect_stdout: true
 }
 
 comparisons: {
@@ -287,7 +379,7 @@ evaluate_3: {
         console.log(1 + Number(x) + 2);
     }
     expect: {
-        console.log(+x + 3);
+        console.log(+("" + x) + 3);
     }
 }
 
@@ -726,7 +818,7 @@ issue_1710: {
     expect_stdout: true
 }
 
-unary_binary_parenthesis: {
+unary_binary_parentheses: {
     options = {
         evaluate: true,
     }
@@ -1334,4 +1426,76 @@ issue_4142: {
         console.log("" + +(0 === console));
     }
     expect_stdout: "0"
+}
+
+issue_4542_1: {
+    options = {
+        evaluate: true,
+        unsafe_math: true,
+    }
+    input: {
+        console.log(function(a) {
+            return a / (1 / (a[0] = 2));
+        }([ 3 ]));
+    }
+    expect: {
+        console.log(function(a) {
+            return a / (1 / (a[0] = 2));
+        }([ 3 ]));
+    }
+    expect_stdout: "4"
+}
+
+issue_4542_2: {
+    options = {
+        evaluate: true,
+        unsafe_math: true,
+    }
+    input: {
+        console.log(function(a) {
+            return a / (1 / --a[0]);
+        }([ 3 ]));
+    }
+    expect: {
+        console.log(function(a) {
+            return a / (1 / --a[0]);
+        }([ 3 ]));
+    }
+    expect_stdout: "4"
+}
+
+issue_4542_3: {
+    options = {
+        evaluate: true,
+        unsafe_math: true,
+    }
+    input: {
+        console.log(function(a) {
+            return a / (0 / (a[0] = 0, 1));
+        }([ 1 ]));
+    }
+    expect: {
+        console.log(function(a) {
+            return a / (0 / (a[0] = 0, 1));
+        }([ 1 ]));
+    }
+    expect_stdout: "NaN"
+}
+
+issue_4542_4: {
+    options = {
+        evaluate: true,
+        unsafe_math: true,
+    }
+    input: {
+        console.log(function(a) {
+            return a / (1 / (a.length = 1));
+        }([ 2, 3 ]));
+    }
+    expect: {
+        console.log(function(a) {
+            return a / (1 / (a.length = 1));
+        }([ 2, 3 ]));
+    }
+    expect_stdout: "2"
 }

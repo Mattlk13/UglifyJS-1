@@ -113,7 +113,7 @@ constant_switch_5: {
         // the break inside the if ruins our job
         // we can still get rid of irrelevant cases.
         switch (1) {
-          case 1:
+          default:
             x();
             if (foo) break;
             y();
@@ -300,6 +300,37 @@ drop_default_2: {
     }
 }
 
+drop_default_3: {
+    options = {
+        dead_code: true,
+        evaluate: true,
+        switches: true,
+    }
+    input: {
+        function f() {
+            console.log("PASS");
+            return 42;
+        }
+        switch (42) {
+          case f():
+            break;
+          case void console.log("FAIL"):
+          default:
+        }
+    }
+    expect: {
+        function f() {
+            console.log("PASS");
+            return 42;
+        }
+        switch (42) {
+          case f():
+          case void console.log("FAIL"):
+        }
+    }
+    expect_stdout: "PASS"
+}
+
 keep_default: {
     options = {
         dead_code: true,
@@ -423,7 +454,6 @@ drop_case_3: {
         switch ({}.p) {
           default:
           case void 0:
-            break;
           case c = "FAIL":
         }
         console.log(c);
@@ -454,7 +484,168 @@ drop_case_4: {
     expect_stdout: "PASS"
 }
 
-keep_case: {
+drop_case_5: {
+    options = {
+        dead_code: true,
+        evaluate: true,
+        switches: true,
+    }
+    input: {
+        switch (42) {
+          case void console.log("PASS 1"):
+            console.log("FAIL 1");
+          case 42:
+          case console.log("FAIL 2"):
+            console.log("PASS 2");
+        }
+    }
+    expect: {
+        switch (42) {
+          default:
+            void console.log("PASS 1");
+            console.log("PASS 2");
+        }
+    }
+    expect_stdout: [
+        "PASS 1",
+        "PASS 2",
+    ]
+}
+
+drop_case_6: {
+    options = {
+        dead_code: true,
+        evaluate: true,
+        switches: true,
+    }
+    input: {
+        switch (console.log("PASS 1"), 2) {
+          case 0:
+            console.log("FAIL 1");
+          case (console.log("PASS 2"), 1):
+            console.log("FAIL 2");
+        }
+    }
+    expect: {
+        switch (console.log("PASS 1"), 2) {
+          case (console.log("PASS 2"), 1):
+        }
+    }
+    expect_stdout: [
+        "PASS 1",
+        "PASS 2",
+    ]
+}
+
+drop_case_7: {
+    options = {
+        dead_code: true,
+        evaluate: true,
+        switches: true,
+    }
+    input: {
+        switch (2) {
+          case 0:
+            console.log("FAIL 1");
+          case (console.log("PASS 1"), 1):
+            console.log("FAIL 2");
+          case 2:
+            console.log("PASS 2");
+        }
+    }
+    expect: {
+        switch (2) {
+          default:
+            console.log("PASS 1"), 1;
+            console.log("PASS 2");
+        }
+    }
+    expect_stdout: [
+        "PASS 1",
+        "PASS 2",
+    ]
+}
+
+drop_case_8: {
+    options = {
+        dead_code: true,
+        switches: true,
+    }
+    input: {
+        function log(msg) {
+            console.log(msg);
+            return msg;
+        }
+        switch (log("foo")) {
+          case "bar":
+            log("moo");
+            break;
+          case log("baz"):
+            log("moo");
+            break;
+          default:
+            log("moo");
+        }
+    }
+    expect: {
+        function log(msg) {
+            console.log(msg);
+            return msg;
+        }
+        switch (log("foo")) {
+          case "bar":
+          case log("baz"):
+          default:
+            log("moo");
+        }
+    }
+    expect_stdout: [
+        "foo",
+        "baz",
+        "moo",
+    ]
+}
+
+drop_case_9: {
+    options = {
+        dead_code: true,
+        switches: true,
+    }
+    input: {
+        function log(msg) {
+            console.log(msg);
+            return msg;
+        }
+        switch (log("foo")) {
+          case log("bar"):
+            log("moo");
+            break;
+          case "baz":
+            log("moo");
+            break;
+          default:
+            log("moo");
+        }
+    }
+    expect: {
+        function log(msg) {
+            console.log(msg);
+            return msg;
+        }
+        switch (log("foo")) {
+          default:
+            log("bar");
+            log("moo");
+        }
+    }
+    expect_stdout: [
+        "foo",
+        "bar",
+        "moo",
+    ]
+}
+
+keep_case_1: {
     options = {
         dead_code: true,
         switches: true,
@@ -472,6 +663,76 @@ keep_case: {
           case moo:
         }
     }
+}
+
+keep_case_2: {
+    options = {
+        dead_code: true,
+        evaluate: true,
+        switches: true,
+    }
+    input: {
+        switch ("foo") {
+          case console.log("bar"):
+          case console.log("baz"), "moo":
+        }
+    }
+    expect: {
+        switch ("foo") {
+          case console.log("bar"):
+          case console.log("baz"), "moo":
+        }
+    }
+    expect_stdout: [
+        "bar",
+        "baz",
+    ]
+}
+
+keep_case_3: {
+    options = {
+        dead_code: true,
+        evaluate: true,
+        switches: true,
+    }
+    input: {
+        var a;
+        switch (void console.log("PASS")) {
+          case a:
+          case console.log("FAIL"), 42:
+        }
+    }
+    expect: {
+        var a;
+        switch (void console.log("PASS")) {
+          case a:
+          case console.log("FAIL"), 42:
+        }
+    }
+    expect_stdout: "PASS"
+}
+
+keep_case_4: {
+    options = {
+        dead_code: true,
+        evaluate: true,
+        switches: true,
+    }
+    input: {
+        var a;
+        switch (void console.log("PASS")) {
+          case a:
+          case void console.log("FAIL"):
+        }
+    }
+    expect: {
+        var a;
+        switch (void console.log("PASS")) {
+          case a:
+          case void console.log("FAIL"):
+        }
+    }
+    expect_stdout: "PASS"
 }
 
 issue_376: {
@@ -661,7 +922,7 @@ issue_1680_1: {
           case f(0):
           case f(1):
             f(2);
-          case 2:
+          default:
             f(5);
         }
     }
@@ -924,7 +1185,6 @@ issue_2535: {
     }
     expect: {
         w(), 42;
-        42;
         y();
         z();
     }
@@ -950,7 +1210,6 @@ issue_1750: {
     expect: {
         var a = 0, b = 1;
         true;
-        a, true;
         b = 2;
         console.log(a, b);
     }
@@ -1088,7 +1347,8 @@ drop_switch_6: {
         }
     }
     expect: {
-        A === B;
+        A;
+        B;
         x();
         C !== D;
         y();
@@ -1178,6 +1438,173 @@ issue_4059: {
             var a;
         }
         console.log("PASS");
+    }
+    expect_stdout: "PASS"
+}
+
+issue_5008_1: {
+    options = {
+        dead_code: true,
+        evaluate: true,
+        reduce_vars: true,
+        switches: true,
+        unsafe: true,
+    }
+    input: {
+        console.log(function f() {
+            switch (f) {
+              case f:
+                return "PASS";
+              default:
+                return "FAIL";
+            }
+        }());
+    }
+    expect: {
+        console.log(function f() {
+            switch (f) {
+              default:
+                return "PASS";
+            }
+        }());
+    }
+    expect_stdout: "PASS"
+}
+
+issue_5008_2: {
+    options = {
+        dead_code: true,
+        evaluate: true,
+        reduce_vars: true,
+        switches: true,
+        unsafe: true,
+    }
+    input: {
+        console.log(function(a) {
+            switch (a) {
+              case a:
+                return "PASS";
+              default:
+                return "FAIL";
+            }
+        }([]));
+    }
+    expect: {
+        console.log(function(a) {
+            switch (a) {
+              default:
+                return "PASS";
+            }
+        }([]));
+    }
+    expect_stdout: "PASS"
+}
+
+issue_5008_3: {
+    options = {
+        dead_code: true,
+        evaluate: true,
+        reduce_vars: true,
+        switches: true,
+        unsafe: true,
+    }
+    input: {
+        console.log(function(a) {
+            switch (a) {
+              case a:
+                return "PASS";
+              default:
+                return "FAIL";
+            }
+        }({}));
+    }
+    expect: {
+        console.log(function(a) {
+            switch (a) {
+              default:
+                return "PASS";
+            }
+        }({}));
+    }
+    expect_stdout: "PASS"
+}
+
+issue_5008_4: {
+    options = {
+        dead_code: true,
+        evaluate: true,
+        reduce_vars: true,
+        switches: true,
+    }
+    input: {
+        console.log(function(a) {
+            switch (a) {
+              case a:
+                return "PASS";
+              default:
+                return "FAIL";
+            }
+        }(/foo/));
+    }
+    expect: {
+        console.log(function(a) {
+            switch (a) {
+              default:
+                return "PASS";
+            }
+        }(/foo/));
+    }
+    expect_stdout: "PASS"
+}
+
+issue_5010: {
+    options = {
+        dead_code: true,
+        evaluate: true,
+        switches: true,
+    }
+    input: {
+        var a;
+        switch (42) {
+          case console.log("PASS"):
+          case a:
+            console.log("FAIL");
+          case 42:
+        }
+    }
+    expect: {
+        var a;
+        switch (42) {
+          case console.log("PASS"):
+          case a:
+            console.log("FAIL");
+        }
+    }
+    expect_stdout: "PASS"
+}
+
+issue_5012: {
+    options = {
+        dead_code: true,
+        evaluate: true,
+        switches: true,
+    }
+    input: {
+        switch (void 0) {
+          case console.log("PASS"):
+            break;
+          case void 0:
+          case 42:
+            console.log("FAIL");
+        }
+    }
+    expect: {
+        switch (void 0) {
+          case console.log("PASS"):
+            break;
+          default:
+            console.log("FAIL");
+        }
     }
     expect_stdout: "PASS"
 }

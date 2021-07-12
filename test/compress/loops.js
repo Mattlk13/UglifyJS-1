@@ -501,14 +501,14 @@ do_switch: {
     }
 }
 
-in_parenthesis_1: {
+in_parentheses_1: {
     input: {
         for (("foo" in {});0;);
     }
     expect_exact: 'for(("foo"in{});0;);'
 }
 
-in_parenthesis_2: {
+in_parentheses_2: {
     input: {
         for ((function(){ "foo" in {}; });0;);
     }
@@ -828,6 +828,44 @@ empty_for_in_prop_init: {
     ]
 }
 
+for_of: {
+    input: {
+        var a = [ "PASS", 42 ];
+        a.p = "FAIL";
+        for (a of (null, a))
+            console.log(a);
+    }
+    expect_exact: 'var a=["PASS",42];a.p="FAIL";for(a of(null,a))console.log(a);'
+    expect_stdout: true
+    node_version: ">=0.12"
+}
+
+for_async_of: {
+    input: {
+        var async = [ "PASS", 42 ];
+        async.p = "FAIL";
+        for (async of (null, async))
+            console.log(async);
+    }
+    expect_exact: 'var async=["PASS",42];async.p="FAIL";for(async of(null,async))console.log(async);'
+    expect_stdout: true
+    node_version: ">=0.12 <16"
+}
+
+for_of_regexp: {
+    input: {
+        for (var a of /foo/);
+    }
+    expect_exact: "for(var a of/foo/);"
+}
+
+for_await_of_regexp: {
+    input: {
+        for await (var a of /foo/);
+    }
+    expect_exact: "for await(var a of/foo/);"
+}
+
 issue_3631_1: {
     options = {
         dead_code: true,
@@ -1026,7 +1064,7 @@ issue_4075: {
 
 issue_4082: {
     options = {
-        keep_fargs: "strict",
+        keep_fargs: false,
         loops: true,
         unused: true,
     }
@@ -1050,7 +1088,7 @@ issue_4082: {
 
 issue_4084: {
     options = {
-        keep_fargs: "strict",
+        keep_fargs: false,
         loops: true,
         reduce_vars: true,
         unused: true,
@@ -1253,4 +1291,60 @@ issue_4240: {
         })();
     }
     expect_stdout: "PASS"
+}
+
+issue_4355: {
+    options = {
+        dead_code: true,
+        evaluate: true,
+        loops: true,
+        passes: 2,
+        side_effects: true,
+        unused: true,
+    }
+    input: {
+        while (function() {
+            var a;
+            for (a in console.log("PASS"))
+                var b = 0;
+        }())
+            var c;
+    }
+    expect: {
+        (function() {
+            console.log("PASS");
+        })();
+        var c;
+    }
+    expect_stdout: "PASS"
+}
+
+issue_4564: {
+    options = {
+        loops: true,
+        unused: true,
+    }
+    input: {
+        try {
+            throw null;
+        } catch (a) {
+            var a;
+            (function() {
+                for (a in "foo");
+            })();
+            console.log(a);
+        }
+    }
+    expect: {
+        try {
+            throw null;
+        } catch (a) {
+            var a;
+            (function() {
+                for (a in "foo");
+            })();
+            console.log(a);
+        }
+    }
+    expect_stdout: "2"
 }

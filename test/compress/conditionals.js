@@ -822,6 +822,33 @@ cond_13: {
     }
 }
 
+cond_14: {
+    options = {
+        booleans: true,
+        conditionals: true,
+        side_effects: true,
+    }
+    input: {
+        function f(a) {
+            if (a)
+                if (a)
+                    console.log("PASS");
+                else
+                    console.log("FAIL");
+        }
+        f(null);
+        f(42);
+    }
+    expect: {
+        function f(a) {
+            a && console.log("PASS");
+        }
+        f(null);
+        f(42);
+    }
+    expect_stdout: "PASS"
+}
+
 ternary_boolean_consequent: {
     options = {
         booleans: true,
@@ -1860,4 +1887,40 @@ issue_3808_2: {
         console.log((a = "PASS", [] + "" && (a = "FAIL")), a);
     }
     expect_stdout: " PASS"
+}
+
+object_super: {
+    options = {
+        conditionals: true,
+    }
+    input: {
+        Object.setPrototypeOf({
+            f(a) {
+                a ? this.g("FAIL") : super.g("FAIL");
+            },
+            g(b) {
+                console.log(b);
+            },
+        }, {
+            g() {
+                console.log("PASS");
+            },
+        }).f();
+    }
+    expect: {
+        Object.setPrototypeOf({
+            f(a) {
+                a ? this.g("FAIL") : super.g("FAIL");
+            },
+            g(b) {
+                console.log(b);
+            },
+        }, {
+            g() {
+                console.log("PASS");
+            },
+        }).f();
+    }
+    expect_stdout: "PASS"
+    node_version: ">=4"
 }

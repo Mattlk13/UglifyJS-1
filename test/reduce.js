@@ -18,9 +18,18 @@ var sandbox = require("./sandbox");
 
 Error.stackTraceLimit = Infinity;
 module.exports = function reduce_test(testcase, minify_options, reduce_options) {
-    if (testcase instanceof U.AST_Node) testcase = testcase.print_to_string();
     minify_options = minify_options || {};
     reduce_options = reduce_options || {};
+    var print_options = {};
+    [
+        "ie8",
+        "v8",
+        "webkit",
+    ].forEach(function(name) {
+        var value = minify_options[name] || minify_options.output && minify_options.output[name];
+        if (value) print_options[name] = value;
+    });
+    if (testcase instanceof U.AST_Node) testcase = testcase.print_to_string(print_options);
     var max_iterations = reduce_options.max_iterations || 1000;
     var max_timeout = reduce_options.max_timeout || 10000;
     var warnings = [];
@@ -37,7 +46,7 @@ module.exports = function reduce_test(testcase, minify_options, reduce_options) 
     if (verbose) {
         log("// Node.js " + process.version + " on " + os.platform() + " " + os.arch());
     }
-    if (differs.error && [ "DefaultsError", "SyntaxError" ].indexOf(differs.error.name) < 0) {
+    if (differs && differs.error && [ "DefaultsError", "SyntaxError" ].indexOf(differs.error.name) < 0) {
         test_for_diff = test_minify;
         differs = test_for_diff(testcase, minify_options, result_cache, max_timeout);
     }
@@ -61,8 +70,8 @@ module.exports = function reduce_test(testcase, minify_options, reduce_options) 
     } else if (differs.error) {
         differs.warnings = warnings;
         return differs;
-    } else if (is_error(differs.unminified_result)
-        && is_error(differs.minified_result)
+    } else if (sandbox.is_error(differs.unminified_result)
+        && sandbox.is_error(differs.minified_result)
         && differs.unminified_result.name == differs.minified_result.name) {
         return {
             code: [
@@ -99,10 +108,10 @@ module.exports = function reduce_test(testcase, minify_options, reduce_options) 
             if (!in_list && node instanceof U.AST_EmptyStatement) return;
             if (node instanceof U.AST_Label) return;
             if (node instanceof U.AST_LabelRef) return;
-            if (!in_list && node instanceof U.AST_SymbolDeclaration) return;
             if (node instanceof U.AST_Toplevel) return;
             var parent = tt.parent();
             if (node instanceof U.AST_SymbolFunarg && parent instanceof U.AST_Accessor) return;
+            if (!in_list && parent.rest !== node && node instanceof U.AST_SymbolDeclaration) return;
 
             // ensure that the _permute prop is a number.
             // can not use `node.start._permute |= 0;` as it will erase fractional part.
@@ -114,16 +123,35 @@ module.exports = function reduce_test(testcase, minify_options, reduce_options) 
 
             // ignore lvalues
             if (parent instanceof U.AST_Assign && parent.left === node) return;
+            if (parent instanceof U.AST_DefaultValue && parent.name === node) return;
+            if (parent instanceof U.AST_DestructuredKeyVal && parent.value === node) return;
             if (parent instanceof U.AST_Unary && parent.expression === node) switch (parent.operator) {
               case "++":
               case "--":
               case "delete":
                 return;
             }
+            if (parent instanceof U.AST_VarDef && parent.name === node) return;
+            // preserve class methods
+            if (parent instanceof U.AST_ClassMethod && parent.value === node) return;
+            // preserve exports
+            if (parent instanceof U.AST_ExportDeclaration) return;
+            if (parent instanceof U.AST_ExportDefault) return;
+            if (parent instanceof U.AST_ExportForeign) return;
+            if (parent instanceof U.AST_ExportReferences) return;
+            // preserve sole definition of an export statement
+            if (node instanceof U.AST_VarDef
+                && parent.definitions.length == 1
+                && tt.parent(1) instanceof U.AST_ExportDeclaration) {
+                return;
+            }
             // preserve for (var xxx; ...)
             if (parent instanceof U.AST_For && parent.init === node && node instanceof U.AST_Definitions) return node;
-            // preserve for (xxx in ...)
-            if (parent instanceof U.AST_ForIn && parent.init === node) return node;
+            // preserve for (xxx in/of ...)
+            if (parent instanceof U.AST_ForEnumeration && parent.init === node) return node;
+            // preserve super(...)
+            if (node.TYPE == "Call" && node.expression instanceof U.AST_Super) return;
+            if (node instanceof U.AST_Super && parent.TYPE == "Call" && parent.expression === node) return node;
 
             // node specific permutations with no parent logic
 
@@ -132,7 +160,7 @@ module.exports = function reduce_test(testcase, minify_options, reduce_options) 
                 if (expr && !(expr instanceof U.AST_Hole)) {
                     node.start._permute++;
                     CHANGED = true;
-                    return expr;
+                    return expr instanceof U.AST_Spread ? expr.expression : expr;
                 }
             }
             else if (node instanceof U.AST_Binary) {
@@ -141,6 +169,20 @@ module.exports = function reduce_test(testcase, minify_options, reduce_options) 
                     node.left,
                     node.right,
                 ][ permute & 1 ];
+                if (expr instanceof U.AST_Destructured) expr = expr.transform(new U.TreeTransformer(function(node, descend) {
+                    if (node instanceof U.AST_DefaultValue) return new U.AST_Assign({
+                        operator: "=",
+                        left: node.name.transform(this),
+                        right: node.value,
+                        start: {},
+                    });
+                    if (node instanceof U.AST_DestructuredKeyVal) return new U.AST_ObjectKeyVal(node);
+                    if (node instanceof U.AST_Destructured) {
+                        node = new (node instanceof U.AST_DestructuredArray ? U.AST_Array : U.AST_Object)(node);
+                        descend(node, this);
+                    }
+                    return node;
+                }));
                 CHANGED = true;
                 return permute < 2 ? expr : wrap_with_console_log(expr);
             }
@@ -155,22 +197,26 @@ module.exports = function reduce_test(testcase, minify_options, reduce_options) 
             }
             else if (node instanceof U.AST_Call) {
                 var expr = [
-                    node.expression,
+                    !(node.expression instanceof U.AST_Super) && node.expression,
                     node.args[0],
                     null,  // intentional
                 ][ ((node.start._permute += step) * steps | 0) % 3 ];
                 if (expr) {
                     CHANGED = true;
-                    return expr;
+                    return expr instanceof U.AST_Spread ? expr.expression : expr;
+                }
+                if (node.expression instanceof U.AST_Arrow && node.expression.value) {
+                    var seq = node.args.slice();
+                    seq.push(node.expression.value);
+                    CHANGED = true;
+                    return to_sequence(seq);
                 }
                 if (node.expression instanceof U.AST_Function) {
                     // hoist and return expressions from the IIFE function expression
-                    var body = node.expression.body;
-                    node.expression.body = [];
                     var seq = [];
-                    body.forEach(function(node) {
+                    node.expression.body.forEach(function(node) {
                         var expr = expr instanceof U.AST_Exit ? node.value : node.body;
-                        if (expr instanceof U.AST_Node && !is_statement(expr)) {
+                        if (expr instanceof U.AST_Node && !U.is_statement(expr) && can_hoist(expr)) {
                             // collect expressions from each statements' body
                             seq.push(expr);
                         }
@@ -193,13 +239,35 @@ module.exports = function reduce_test(testcase, minify_options, reduce_options) 
                     node.alternative,
                 ][ ((node.start._permute += step) * steps | 0) % 3 ];
             }
+            else if (node instanceof U.AST_DefaultValue) {
+                node.start._permute++;
+                CHANGED = true;
+                return node.name;
+            }
+            else if (node instanceof U.AST_DestructuredArray) {
+                var expr = node.elements[0];
+                if (expr && !(expr instanceof U.AST_Hole)) {
+                    node.start._permute++;
+                    CHANGED = true;
+                    return expr;
+                }
+            }
+            else if (node instanceof U.AST_DestructuredObject) {
+                // first property's value
+                var expr = node.properties[0];
+                if (expr) {
+                    node.start._permute++;
+                    CHANGED = true;
+                    return expr.value;
+                }
+            }
             else if (node instanceof U.AST_Defun) {
                 switch (((node.start._permute += step) * steps | 0) % 2) {
                   case 0:
                     CHANGED = true;
                     return List.skip;
                   default:
-                    if (!has_exit(node)) {
+                    if (!has_exit(node) && can_hoist(node)) {
                         // hoist function declaration body
                         var body = node.body;
                         node.body = [];
@@ -246,19 +314,30 @@ module.exports = function reduce_test(testcase, minify_options, reduce_options) 
                 node.start._permute += step;
                 if (expr && (expr !== node.body || !has_loopcontrol(expr, node, parent))) {
                     CHANGED = true;
-                    return to_statement(expr);
+                    return to_statement_init(expr);
                 }
             }
-            else if (node instanceof U.AST_ForIn) {
-                var expr = [
-                    node.init,
-                    node.object,
-                    node.body,
-                ][ (node.start._permute * steps | 0) % 3 ];
+            else if (node instanceof U.AST_ForEnumeration) {
+                var expr;
+                switch ((node.start._permute * steps | 0) % 3) {
+                  case 0:
+                    if (node.init instanceof U.AST_Definitions) {
+                        if (node.init instanceof U.AST_Const) break;
+                        if (node.init.definitions[0].name instanceof U.AST_Destructured) break;
+                    }
+                    expr = node.init;
+                    break;
+                  case 1:
+                    expr = node.object;
+                    break;
+                  case 2:
+                    if (!has_loopcontrol(node.body, node, parent)) expr = node.body;
+                    break;
+                }
                 node.start._permute += step;
-                if (expr && (expr !== node.body || !has_loopcontrol(expr, node, parent))) {
+                if (expr) {
                     CHANGED = true;
-                    return to_statement(expr);
+                    return to_statement_init(expr);
                 }
             }
             else if (node instanceof U.AST_If) {
@@ -276,7 +355,16 @@ module.exports = function reduce_test(testcase, minify_options, reduce_options) 
             }
             else if (node instanceof U.AST_Object) {
                 // first property's value
-                var expr = node.properties[0] instanceof U.AST_ObjectKeyVal && node.properties[0].value;
+                var expr = node.properties[0];
+                if (expr instanceof U.AST_ObjectKeyVal) {
+                    expr = expr.value;
+                } else if (expr instanceof U.AST_Spread) {
+                    expr = expr.expression;
+                } else if (expr && expr.key instanceof U.AST_Node) {
+                    expr = expr.key;
+                } else {
+                    expr = null;
+                }
                 if (expr) {
                     node.start._permute++;
                     CHANGED = true;
@@ -285,8 +373,8 @@ module.exports = function reduce_test(testcase, minify_options, reduce_options) 
             }
             else if (node instanceof U.AST_PropAccess) {
                 var expr = [
-                    node.expression,
-                    node.property instanceof U.AST_Node && node.property,
+                    !(node.expression instanceof U.AST_Super) && node.expression,
+                    node.property instanceof U.AST_Node && !(parent instanceof U.AST_Destructured) && node.property,
                 ][ node.start._permute++ % 2 ];
                 if (expr) {
                     CHANGED = true;
@@ -297,11 +385,9 @@ module.exports = function reduce_test(testcase, minify_options, reduce_options) 
                 if (node.body instanceof U.AST_Call && node.body.expression instanceof U.AST_Function) {
                     // hoist simple statement IIFE function expression body
                     node.start._permute++;
-                    if (!has_exit(node.body.expression)) {
-                        var body = node.body.expression.body;
-                        node.body.expression.body = [];
+                    if (!has_exit(node.body.expression) && can_hoist(node.body.expression)) {
                         CHANGED = true;
-                        return List.splice(body);
+                        return List.splice(node.body.expression.body);
                     }
                 }
             }
@@ -368,9 +454,8 @@ module.exports = function reduce_test(testcase, minify_options, reduce_options) 
             }
 
             if (in_list) {
-                // special case to drop object properties and switch branches
-                if (parent instanceof U.AST_Object
-                    || parent instanceof U.AST_Switch && parent.expression != node) {
+                // drop switch branches
+                if (parent instanceof U.AST_Switch && parent.expression != node) {
                     node.start._permute++;
                     CHANGED = true;
                     return List.skip;
@@ -389,10 +474,14 @@ module.exports = function reduce_test(testcase, minify_options, reduce_options) 
                     CHANGED = true;
                     return List.skip;
                 }
+            } else if (parent.rest === node) {
+                node.start._permute++;
+                CHANGED = true;
+                return null;
             }
 
             // replace this node
-            var newNode = is_statement(node) ? new U.AST_EmptyStatement({
+            var newNode = U.is_statement(node) ? new U.AST_EmptyStatement({
                 start: {},
             }) : U.parse(REPLACEMENTS[node.start._permute % REPLACEMENTS.length | 0], {
                 expression: true,
@@ -401,20 +490,24 @@ module.exports = function reduce_test(testcase, minify_options, reduce_options) 
             CHANGED = true;
             return newNode;
         }, function(node, in_list) {
-            if (node instanceof U.AST_Sequence) {
+            if (node instanceof U.AST_Definitions) {
+                // remove empty var statement
+                if (node.definitions.length == 0) return in_list ? List.skip : new U.AST_EmptyStatement({
+                    start: {},
+                });
+            } else if (node instanceof U.AST_ObjectMethod) {
+                if (!/Function$/.test(node.value.TYPE)) return new U.AST_ObjectKeyVal({
+                    key: node.key,
+                    value: node.value,
+                    start: {},
+                });
+            } else if (node instanceof U.AST_Sequence) {
                 // expand single-element sequence
                 if (node.expressions.length == 1) return node.expressions[0];
-            }
-            else if (node instanceof U.AST_Try) {
+            } else if (node instanceof U.AST_Try) {
                 // expand orphaned try block
                 if (!node.bcatch && !node.bfinally) return new U.AST_BlockStatement({
                     body: node.body,
-                    start: {},
-                });
-            }
-            else if (node instanceof U.AST_Definitions) {
-                // remove empty var statement
-                if (node.definitions.length == 0) return in_list ? List.skip : new U.AST_EmptyStatement({
                     start: {},
                 });
             }
@@ -429,7 +522,7 @@ module.exports = function reduce_test(testcase, minify_options, reduce_options) 
                     if (node.TYPE == "Call" && node.expression.print_to_string() == "console.log") {
                         return to_sequence(node.args);
                     }
-                    if (node instanceof U.AST_Catch && node.argname) {
+                    if (node instanceof U.AST_Catch && node.argname instanceof U.AST_SymbolCatch) {
                         descend(node, this);
                         node.body.unshift(new U.AST_SimpleStatement({
                             body: wrap_with_console_log(new U.AST_SymbolRef(node.argname)),
@@ -438,7 +531,7 @@ module.exports = function reduce_test(testcase, minify_options, reduce_options) 
                         return node;
                     }
                 }));
-                var code = testcase_ast.print_to_string();
+                var code = testcase_ast.print_to_string(print_options);
                 var diff = test_for_diff(code, minify_options, result_cache, max_timeout);
                 if (diff && !diff.timed_out && !diff.error) {
                     testcase = code;
@@ -462,7 +555,7 @@ module.exports = function reduce_test(testcase, minify_options, reduce_options) 
                 var code_ast = testcase_ast.clone(true).transform(tt);
                 if (!CHANGED) break;
                 try {
-                    var code = code_ast.print_to_string();
+                    var code = code_ast.print_to_string(print_options);
                 } catch (ex) {
                     // AST is not well formed.
                     // no harm done - just log the error, ignore latest change and continue iterating.
@@ -483,8 +576,8 @@ module.exports = function reduce_test(testcase, minify_options, reduce_options) 
                         log(code);
                         log(diff.error.stack);
                         log("*** Discarding permutation and continuing.");
-                    } else if (is_error(diff.unminified_result)
-                        && is_error(diff.minified_result)
+                    } else if (sandbox.is_error(diff.unminified_result)
+                        && sandbox.is_error(diff.minified_result)
                         && diff.unminified_result.name == diff.minified_result.name) {
                         // ignore difference in error messages caused by minification
                         diff_error_message = testcase;
@@ -504,11 +597,13 @@ module.exports = function reduce_test(testcase, minify_options, reduce_options) 
         var beautified = U.minify(testcase, {
             compress: false,
             mangle: false,
-            output: {
-                beautify: true,
-                braces: true,
-                comments: true,
-            },
+            output: function() {
+                var options = JSON.parse(JSON.stringify(print_options));
+                options.beautify = true;
+                options.braces = true;
+                options.comments = true;
+                return options;
+            }(),
         });
         testcase = {
             code: testcase,
@@ -523,10 +618,10 @@ module.exports = function reduce_test(testcase, minify_options, reduce_options) 
         }
         var lines = [ "" ];
         if (isNaN(max_timeout)) {
-            lines.push("// minify error: " + to_comment(strip_color_codes(differs.minified_result.stack)));
+            lines.push("// minify error: " + to_comment(differs.minified_result.stack));
         } else {
-            var unminified_result = strip_color_codes(differs.unminified_result);
-            var minified_result = strip_color_codes(differs.minified_result);
+            var unminified_result = differs.unminified_result;
+            var minified_result = differs.minified_result;
             if (trim_trailing_whitespace(unminified_result) == trim_trailing_whitespace(minified_result)) {
                 lines.push(
                     "// (stringified)",
@@ -546,10 +641,6 @@ module.exports = function reduce_test(testcase, minify_options, reduce_options) 
         return testcase;
     }
 };
-
-function strip_color_codes(value) {
-    return ("" + value).replace(/\u001b\[\d+m/g, "");
-}
 
 function to_comment(value) {
     return ("" + value).replace(/\n/g, "\n// ");
@@ -588,16 +679,22 @@ function has_loopcontrol(body, loop, label) {
     return found;
 }
 
-function is_error(result) {
-    return typeof result == "object" && typeof result.name == "string" && typeof result.message == "string";
+function can_hoist(body) {
+    var found = false;
+    body.walk(new U.TreeWalker(function(node) {
+        if (found) return true;
+        if (node instanceof U.AST_NewTarget) return found = true;
+        if (node instanceof U.AST_Scope) {
+            if (node === body) return;
+            return true;
+        }
+        if (node instanceof U.AST_Super) return found = true;
+    }));
+    return !found;
 }
 
 function is_timed_out(result) {
-    return is_error(result) && /timed out/.test(result.message);
-}
-
-function is_statement(node) {
-    return node instanceof U.AST_Statement && !(node instanceof U.AST_Function);
+    return sandbox.is_error(result) && /timed out/.test(result.message);
 }
 
 function merge_sequence(array, node) {
@@ -619,10 +716,17 @@ function to_sequence(expressions) {
 }
 
 function to_statement(node) {
-    return is_statement(node) ? node : new U.AST_SimpleStatement({
+    return U.is_statement(node) ? node : new U.AST_SimpleStatement({
         body: node,
         start: {},
     });
+}
+
+function to_statement_init(node) {
+    return node instanceof U.AST_Const || node instanceof U.AST_Let ? new U.AST_BlockStatement({
+        body: [ node ],
+        start: {},
+    }) : to_statement(node);
 }
 
 function wrap_with_console_log(node) {
@@ -647,7 +751,7 @@ function run_code(code, toplevel, result_cache, timeout) {
     if (!value) {
         var start = Date.now();
         result_cache[key] = value = {
-            result: sandbox.run_code(code, toplevel, timeout),
+            result: sandbox.run_code(sandbox.patch_module_statements(code), toplevel, timeout),
             elapsed: Date.now() - start,
         };
     }

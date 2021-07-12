@@ -297,6 +297,33 @@ name_collision_3: {
     expect_stdout: "true 4 6"
 }
 
+name_collision_4: {
+    options = {
+        hoist_props: true,
+        reduce_vars: true,
+    }
+    input: {
+        console.log(function() {
+            var o = {
+                p: 0,
+                q: "PASS",
+            };
+            return function(o_p) {
+                if (!o.p) return o_p;
+            }(o.q);
+        }());
+    }
+    expect: {
+        console.log(function() {
+            var o_p$0 = 0, o_q = "PASS";
+            return function(o_p) {
+                if (!o_p$0) return o_p;
+            }(o_q);
+        }());
+    }
+    expect_stdout: "PASS"
+}
+
 contains_this_1: {
     options = {
         evaluate: true,
@@ -759,6 +786,32 @@ issue_3071_1: {
         reduce_vars: true,
         sequences: true,
         side_effects: true,
+        unused: true,
+    }
+    input: {
+        (function() {
+            var obj = {};
+            obj.one = 1;
+            obj.two = 2;
+            console.log(obj.one, obj.two);
+        })();
+    }
+    expect: {
+        console.log(1, 2);
+    }
+    expect_stdout: "1 2"
+}
+
+issue_3071_1_toplevel: {
+    options = {
+        evaluate: true,
+        hoist_props: true,
+        inline: true,
+        join_vars: true,
+        passes: 3,
+        reduce_vars: true,
+        sequences: true,
+        side_effects: true,
         toplevel: true,
         unused: true,
     }
@@ -1040,4 +1093,51 @@ issue_4023: {
         console.log(void 0 !== {});
     }
     expect_stdout: "true"
+}
+
+object_super: {
+    options = {
+        hoist_props: true,
+        reduce_vars: true,
+        toplevel: true,
+    }
+    input: {
+        var o = {
+            f(a) {
+                return a ? console.log("PASS") : super.log("PASS");
+            },
+        };
+        o.f(42);
+    }
+    expect: {
+        var o = {
+            f(a) {
+                return a ? console.log("PASS") : super.log("PASS");
+            },
+        };
+        o.f(42);
+    }
+    expect_stdout: "PASS"
+    node_version: ">=4"
+}
+
+issue_4985: {
+    options = {
+        hoist_props: true,
+        reduce_vars: true,
+        toplevel: true,
+    }
+    input: {
+        var a = { p: 42 };
+        console.log(function() {
+            a;
+        }());
+    }
+    expect: {
+        var a_p = 42;
+        console.log(function() {
+            ({});
+        }());
+    }
+    expect_stdout: "undefined"
 }

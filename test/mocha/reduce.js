@@ -37,8 +37,7 @@ describe("test/reduce.js", function() {
     it("Should retain setter arguments", function() {
         var result = reduce_test(read("test/input/reduce/setter.js"), {
             compress: {
-                keep_fargs: false,
-                unsafe: true,
+                unsafe_math: true,
             },
             mangle: false,
         }, {
@@ -110,28 +109,24 @@ describe("test/reduce.js", function() {
     });
     it("Should print correct output for irreducible test case", function() {
         var result = reduce_test([
-            "console.log(function f(a) {",
-            "    return f.length;",
-            "}());",
+            "console.log(1 + .1 + .1);",
         ].join("\n"), {
             compress: {
-                keep_fargs: false,
+                unsafe_math: true,
             },
             mangle: false,
         });
         if (result.error) throw result.error;
         assert.strictEqual(result.code, [
             "// (beautified)",
-            "console.log(function f(a) {",
-            "    return f.length;",
-            "}());",
-            "// output: 1",
+            "console.log(1 + .1 + .1);",
+            "// output: 1.2000000000000002",
             "// ",
-            "// minify: 0",
+            "// minify: 1.2",
             "// ",
             "// options: {",
             '//   "compress": {',
-            '//     "keep_fargs": false',
+            '//     "unsafe_math": true',
             "//   },",
             '//   "mangle": false',
             "// }",
@@ -187,6 +182,24 @@ describe("test/reduce.js", function() {
             '//   "mangle": false',
             "// }",
         ].join("\n"));
+    });
+    it("Should reduce `for (const ... in ...)` without invalid intermediate AST", function() {
+        if (semver.satisfies(process.version, "<4")) return;
+        var code = [
+            "var a = 0;",
+            "",
+            "for (const b in [ 1, 2, 3 ]) {",
+            "    a = +a + 1 - .2;",
+            "    console.log(a);",
+            "}",
+        ].join("\n");
+        var result = reduce_test(code, {
+            compress: {
+                unsafe_math: true,
+            },
+        });
+        if (result.error) throw result.error;
+        assert.deepEqual(result.warnings, []);
     });
     it("Should reduce infinite loops with reasonable performance", function() {
         if (semver.satisfies(process.version, "<=0.10")) return;
@@ -299,12 +312,45 @@ describe("test/reduce.js", function() {
             "// }",
         ]).join("\n"));
     });
+    it("Should maintain block-scope for const/let", function() {
+        if (semver.satisfies(process.version, "<4")) return;
+        this.timeout(120000);
+        var code = [
+            '"use strict";',
+            "",
+            "L: for (let a = (1 - .8).toString(); ;) {",
+            "    if (!console.log(a)) {",
+            "        break L;",
+            "    }",
+            "}",
+        ].join("\n");
+        var result = reduce_test(code, {
+            compress: {
+                unsafe_math: true,
+            },
+            mangle: false,
+        });
+        if (result.error) throw result.error;
+        assert.strictEqual(result.code, [
+            "// (beautified)",
+            code,
+            "// output: 0.19999999999999996",
+            "// ",
+            "// minify: 0.2",
+            "// ",
+            "// options: {",
+            '//   "compress": {',
+            '//     "unsafe_math": true',
+            '//   },',
+            '//   "mangle": false',
+            "// }",
+        ].join("\n"));
+    });
     it("Should handle corner cases when intermediate case differs only in Error.message", function() {
         if (semver.satisfies(process.version, "<=0.10")) return;
         var result = reduce_test(read("test/input/reduce/diff_error.js"), {
             compress: {
-                keep_fargs: false,
-                unsafe: true,
+                unsafe_math: true,
             },
             mangle: false,
         }, {
@@ -312,5 +358,60 @@ describe("test/reduce.js", function() {
         });
         if (result.error) throw result.error;
         assert.strictEqual(result.code, read("test/input/reduce/diff_error.reduced.js"));
+    });
+    it("Should maintain valid LHS in destructuring assignments", function() {
+        if (semver.satisfies(process.version, "<6")) return;
+        var result = reduce_test(read("test/input/reduce/destructured_assign.js"), {
+            compress: {
+                unsafe_math: true,
+            },
+            mangle: false,
+            validate: true,
+        });
+        if (result.error) throw result.error;
+        assert.strictEqual(result.code, read("test/input/reduce/destructured_assign.reduced.js"));
+    });
+    it("Should handle destructured catch expressions", function() {
+        if (semver.satisfies(process.version, "<6")) return;
+        var result = reduce_test(read("test/input/reduce/destructured_catch.js"), {
+            mangle: false,
+        });
+        if (result.error) throw result.error;
+        assert.strictEqual(result.code, read("test/input/reduce/destructured_catch.reduced.js"));
+    });
+    it("Should not enumerate `toString` over global context", function() {
+        if (semver.satisfies(process.version, "<8")) return;
+        var code = [
+            "(async function() {});",
+            "for (var k in this);",
+            "console.log(k, 42 + this);",
+        ].join("\n");
+        var result = reduce_test(code, {
+            mangle: false,
+        });
+        if (result.error) throw result.error;
+        assert.strictEqual(result.code, [
+            "// Can't reproduce test failure",
+            "// minify options: {",
+            '//   "mangle": false',
+            "// }",
+        ].join("\n"));
+    });
+    it("Should reduce object with method syntax without invalid intermediate AST", function() {
+        if (semver.satisfies(process.version, "<4")) return;
+        var code = [
+            "console.log({",
+            "    f() {",
+            "        return 1 - .8;",
+            "    },",
+            "}.f());",
+        ].join("\n");
+        var result = reduce_test(code, {
+            compress: {
+                unsafe_math: true,
+            },
+        });
+        if (result.error) throw result.error;
+        assert.deepEqual(result.warnings, []);
     });
 });

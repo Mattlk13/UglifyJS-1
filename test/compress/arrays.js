@@ -13,9 +13,10 @@ holes_and_undefined: {
     }
 }
 
-constant_join: {
+constant_join_1: {
     options = {
         evaluate: true,
+        side_effects: true,
         strings: true,
         unsafe: true,
     }
@@ -57,7 +58,7 @@ constant_join: {
         var c5 = [ boo() + bar() + "foo", 1, 2, 3, "bar", bar() + "foo" ].join();
         var c6 = [ "1,2,,,foo,bar", baz() ].join();
         var d = "foo-3bar-baz";
-        var e = [].join(foo + bar);
+        var e = (foo, bar, "");
         var f = "";
         var g = "";
     }
@@ -353,4 +354,73 @@ constructor_good: {
     }
     expect_stdout: true
     expect_warnings: []
+}
+
+unsafe_evaluate_modified_binary: {
+    options = {
+        evaluate: true,
+        reduce_vars: true,
+        unsafe: true,
+    }
+    input: {
+        (function(a) {
+            (console && a).push(1);
+            if (a.length)
+                console.log("PASS");
+        })([]);
+    }
+    expect: {
+        (function(a) {
+            (console && a).push(1);
+            if (a.length)
+                console.log("PASS");
+        })([]);
+    }
+    expect_stdout: "PASS"
+}
+
+unsafe_evaluate_modified_conditional: {
+    options = {
+        evaluate: true,
+        reduce_vars: true,
+        unsafe: true,
+    }
+    input: {
+        (function(a) {
+            (console ? a : []).push(1);
+            if (a.length)
+                console.log("PASS");
+        })([]);
+    }
+    expect: {
+        (function(a) {
+            (console ? a : []).push(1);
+            if (a.length)
+                console.log("PASS");
+        })([]);
+    }
+    expect_stdout: "PASS"
+}
+
+unsafe_evaluate_modified_sequence: {
+    options = {
+        evaluate: true,
+        reduce_vars: true,
+        unsafe: true,
+    }
+    input: {
+        (function(a) {
+            (0, a).push(1);
+            if (a.length)
+                console.log("PASS");
+        })([]);
+    }
+    expect: {
+        (function(a) {
+            (0, a).push(1);
+            if (a.length)
+                console.log("PASS");
+        })([]);
+    }
+    expect_stdout: "PASS"
 }

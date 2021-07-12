@@ -29,7 +29,7 @@ describe("bin/uglifyjs", function() {
         var command = uglifyjscmd + ' test/input/comments/filter.js --comments all';
         exec(command, function(err, stdout) {
             if (err) throw err;
-            assert.strictEqual(stdout, "// foo\n/*@preserve*/\n// bar\n\n");
+            assert.strictEqual(stdout, "// foo\n/*@preserve*/\n// bar\n");
             done();
         });
     });
@@ -37,7 +37,7 @@ describe("bin/uglifyjs", function() {
         var command = uglifyjscmd + ' test/input/comments/filter.js --comments /r/';
         exec(command, function(err, stdout) {
             if (err) throw err;
-            assert.strictEqual(stdout, "/*@preserve*/\n// bar\n\n");
+            assert.strictEqual(stdout, "/*@preserve*/\n// bar\n");
             done();
         });
     });
@@ -45,7 +45,7 @@ describe("bin/uglifyjs", function() {
         var command = uglifyjscmd + ' test/input/comments/filter.js --comments';
         exec(command, function(err, stdout) {
             if (err) throw err;
-            assert.strictEqual(stdout, "/*@preserve*/\n\n");
+            assert.strictEqual(stdout, "/*@preserve*/\n");
             done();
         });
     });
@@ -56,7 +56,7 @@ describe("bin/uglifyjs", function() {
             "--source-map", [
                 "names=true",
                 "url=inline",
-            ].join(","),
+            ].join(),
         ].join(" "), function(err, stdout) {
             if (err) throw err;
             var expected = [
@@ -84,7 +84,7 @@ describe("bin/uglifyjs", function() {
             "--source-map", [
                 "names=false",
                 "url=inline",
-            ].join(","),
+            ].join(),
         ].join(" "), function(err, stdout) {
             if (err) throw err;
             var expected = [
@@ -171,7 +171,7 @@ describe("bin/uglifyjs", function() {
                 "content=" + mapFile,
                 "includeSources",
                 "url=inline",
-            ].join(","),
+            ].join(),
         ].join(" ");
 
         var child = exec(command, function(err, stdout) {
@@ -333,11 +333,13 @@ describe("bin/uglifyjs", function() {
         var command = uglifyjscmd + " test/input/invalid/simple.js";
         exec(command, function(err, stdout, stderr) {
             assert.ok(err);
-            var lines = stderr.split(/\n/);
-            assert.strictEqual(lines[0], "Parse error at test/input/invalid/simple.js:1,12");
-            assert.strictEqual(lines[1], "function f(a{}");
-            assert.strictEqual(lines[2], "            ^");
-            assert.strictEqual(lines[3], "ERROR: Unexpected token: punc «{», expected: punc «,»");
+            assert.strictEqual(stdout, "");
+            assert.strictEqual(stderr.split(/\n/).slice(0, 4).join("\n"), [
+                "Parse error at test/input/invalid/simple.js:1,12",
+                "function f(a{}",
+                "            ^",
+                "ERROR: Unexpected token: punc «{», expected: punc «,»",
+            ].join("\n"));
             done();
         });
     });
@@ -345,11 +347,13 @@ describe("bin/uglifyjs", function() {
         var command = uglifyjscmd + " test/input/invalid/tab.js";
         exec(command, function(err, stdout, stderr) {
             assert.ok(err);
-            var lines = stderr.split(/\n/);
-            assert.strictEqual(lines[0], "Parse error at test/input/invalid/tab.js:1,12");
-            assert.strictEqual(lines[1], "\t\tfoo(\txyz, 0abc);");
-            assert.strictEqual(lines[2], "\t\t    \t     ^");
-            assert.strictEqual(lines[3], "ERROR: Invalid syntax: 0abc");
+            assert.strictEqual(stdout, "");
+            assert.strictEqual(stderr.split(/\n/).slice(0, 4).join("\n"), [
+                "Parse error at test/input/invalid/tab.js:1,12",
+                "\t\tfoo(\txyz, 0abc);",
+                "\t\t    \t     ^",
+                "ERROR: Invalid syntax: 0abc",
+            ].join("\n"));
             done();
         });
     });
@@ -357,11 +361,13 @@ describe("bin/uglifyjs", function() {
         var command = uglifyjscmd + " test/input/invalid/eof.js";
         exec(command, function(err, stdout, stderr) {
             assert.ok(err);
-            var lines = stderr.split(/\n/);
-            assert.strictEqual(lines[0], "Parse error at test/input/invalid/eof.js:2,0");
-            assert.strictEqual(lines[1], "foo, bar(");
-            assert.strictEqual(lines[2], "         ^");
-            assert.strictEqual(lines[3], "ERROR: Unexpected token: eof");
+            assert.strictEqual(stdout, "");
+            assert.strictEqual(stderr.split(/\n/).slice(0, 4).join("\n"), [
+                "Parse error at test/input/invalid/eof.js:2,0",
+                "foo, bar(",
+                "         ^",
+                "ERROR: Unexpected token: eof",
+            ].join("\n"));
             done();
         });
     });
@@ -369,11 +375,13 @@ describe("bin/uglifyjs", function() {
         var command = uglifyjscmd + " test/input/invalid/loop-no-body.js";
         exec(command, function(err, stdout, stderr) {
             assert.ok(err);
-            var lines = stderr.split(/\n/);
-            assert.strictEqual(lines[0], "Parse error at test/input/invalid/loop-no-body.js:2,0");
-            assert.strictEqual(lines[1], "for (var i = 0; i < 1; i++) ");
-            assert.strictEqual(lines[2], "                            ^");
-            assert.strictEqual(lines[3], "ERROR: Unexpected token: eof");
+            assert.strictEqual(stdout, "");
+            assert.strictEqual(stderr.split(/\n/).slice(0, 4).join("\n"), [
+                "Parse error at test/input/invalid/loop-no-body.js:2,0",
+                "for (var i = 0; i < 1; i++) ",
+                "                            ^",
+                "ERROR: Unexpected token: eof",
+            ].join("\n"));
             done();
         });
     });
@@ -386,7 +394,7 @@ describe("bin/uglifyjs", function() {
                 "Parse error at test/input/invalid/assign_1.js:1,18",
                 "console.log(1 || 5--);",
                 "                  ^",
-                "ERROR: Invalid use of -- operator"
+                "ERROR: Invalid use of -- operator",
             ].join("\n"));
             done();
         });
@@ -400,7 +408,7 @@ describe("bin/uglifyjs", function() {
                 "Parse error at test/input/invalid/assign_2.js:1,32",
                 "console.log(2 || (Math.random() /= 2));",
                 "                                ^",
-                "ERROR: Invalid assignment"
+                "ERROR: Invalid assignment",
             ].join("\n"));
             done();
         });
@@ -414,21 +422,35 @@ describe("bin/uglifyjs", function() {
                 "Parse error at test/input/invalid/assign_3.js:1,17",
                 "console.log(3 || ++this);",
                 "                 ^",
-                "ERROR: Invalid use of ++ operator"
+                "ERROR: Invalid use of ++ operator",
             ].join("\n"));
             done();
         });
     });
-    it("Should throw syntax error (++null)", function(done) {
+    it("Should throw syntax error (null = 4)", function(done) {
         var command = uglifyjscmd + " test/input/invalid/assign_4.js";
         exec(command, function(err, stdout, stderr) {
             assert.ok(err);
             assert.strictEqual(stdout, "");
             assert.strictEqual(stderr.split(/\n/).slice(0, 4).join("\n"), [
-                "Parse error at test/input/invalid/assign_4.js:1,0",
-                "++null",
-                "^",
-                "ERROR: Invalid use of ++ operator"
+                "Parse error at test/input/invalid/assign_4.js:1,23",
+                "console.log(4 || (null = 4));",
+                "                       ^",
+                "ERROR: Invalid assignment",
+            ].join("\n"));
+            done();
+        });
+    });
+    it("Should throw syntax error ([]?.length ^= 5)", function(done) {
+        var command = uglifyjscmd + " test/input/invalid/assign_5.js";
+        exec(command, function(err, stdout, stderr) {
+            assert.ok(err);
+            assert.strictEqual(stdout, "");
+            assert.strictEqual(stderr.split(/\n/).slice(0, 4).join("\n"), [
+                "Parse error at test/input/invalid/assign_5.js:1,29",
+                "console.log(5 || ([]?.length ^= 5));",
+                "                             ^",
+                "ERROR: Invalid assignment",
             ].join("\n"));
             done();
         });
@@ -442,7 +464,7 @@ describe("bin/uglifyjs", function() {
                 "Parse error at test/input/invalid/dot_1.js:1,2",
                 "a.=",
                 "  ^",
-                "ERROR: Unexpected token: operator «=», expected: name"
+                "ERROR: Unexpected token: operator «=», expected: name",
             ].join("\n"));
             done();
         });
@@ -456,7 +478,7 @@ describe("bin/uglifyjs", function() {
                 "Parse error at test/input/invalid/dot_2.js:1,0",
                 "%.a;",
                 "^",
-                "ERROR: Unexpected token: operator «%»"
+                "ERROR: Unexpected token: operator «%»",
             ].join("\n"));
             done();
         });
@@ -470,7 +492,7 @@ describe("bin/uglifyjs", function() {
                 "Parse error at test/input/invalid/dot_3.js:1,2",
                 "a./();",
                 "  ^",
-                "ERROR: Unexpected token: operator «/», expected: name"
+                "ERROR: Unexpected token: operator «/», expected: name",
             ].join("\n"));
             done();
         });
@@ -484,7 +506,7 @@ describe("bin/uglifyjs", function() {
                 "Parse error at test/input/invalid/object.js:1,13",
                 "console.log({%: 1});",
                 "             ^",
-                "ERROR: Unexpected token: operator «%»"
+                "ERROR: Unexpected token: operator «%»",
             ].join("\n"));
             done();
         });
@@ -498,7 +520,7 @@ describe("bin/uglifyjs", function() {
                 "Parse error at test/input/invalid/delete.js:13,11",
                 "    delete x;",
                 "           ^",
-                "ERROR: Calling delete on expression not allowed in strict mode"
+                "ERROR: Calling delete on expression not allowed in strict mode",
             ].join("\n"));
             done();
         });
@@ -512,7 +534,7 @@ describe("bin/uglifyjs", function() {
                 "Parse error at test/input/invalid/function_1.js:4,11",
                 "function g(arguments) {",
                 "           ^",
-                "ERROR: Unexpected arguments in strict mode"
+                "ERROR: Unexpected arguments in strict mode",
             ].join("\n"));
             done();
         });
@@ -526,7 +548,7 @@ describe("bin/uglifyjs", function() {
                 "Parse error at test/input/invalid/function_2.js:4,9",
                 "function eval() {",
                 "         ^",
-                "ERROR: Unexpected eval in strict mode"
+                "ERROR: Unexpected eval in strict mode",
             ].join("\n"));
             done();
         });
@@ -540,7 +562,7 @@ describe("bin/uglifyjs", function() {
                 "Parse error at test/input/invalid/function_3.js:4,10",
                 "!function arguments() {",
                 "          ^",
-                "ERROR: Unexpected arguments in strict mode"
+                "ERROR: Unexpected arguments in strict mode",
             ].join("\n"));
             done();
         });
@@ -554,7 +576,7 @@ describe("bin/uglifyjs", function() {
                 "Parse error at test/input/invalid/try.js:7,18",
                 "    try {} catch (eval) {}",
                 "                  ^",
-                "ERROR: Unexpected eval in strict mode"
+                "ERROR: Unexpected eval in strict mode",
             ].join("\n"));
             done();
         });
@@ -568,7 +590,21 @@ describe("bin/uglifyjs", function() {
                 "Parse error at test/input/invalid/var.js:7,8",
                 "    var eval;",
                 "        ^",
-                "ERROR: Unexpected eval in strict mode"
+                "ERROR: Unexpected eval in strict mode",
+            ].join("\n"));
+            done();
+        });
+    });
+    it("Should throw syntax error (var { eval })", function(done) {
+        var command = uglifyjscmd + " test/input/invalid/destructured_var.js";
+        exec(command, function(err, stdout, stderr) {
+            assert.ok(err);
+            assert.strictEqual(stdout, "");
+            assert.strictEqual(stderr.split(/\n/).slice(0, 4).join("\n"), [
+                "Parse error at test/input/invalid/destructured_var.js:7,10",
+                "    var { eval } = 42;",
+                "          ^",
+                "ERROR: Unexpected eval in strict mode",
             ].join("\n"));
             done();
         });
@@ -582,7 +618,7 @@ describe("bin/uglifyjs", function() {
                 "Parse error at test/input/invalid/else.js:1,7",
                 "if (0) else 1;",
                 "       ^",
-                "ERROR: Unexpected token: keyword «else»"
+                "ERROR: Unexpected token: keyword «else»",
             ].join("\n"));
             done();
         });
@@ -596,7 +632,7 @@ describe("bin/uglifyjs", function() {
                 "Parse error at test/input/invalid/return.js:1,0",
                 "return 42;",
                 "^",
-                "ERROR: 'return' outside of function"
+                "ERROR: 'return' outside of function",
             ].join("\n"));
             done();
         });
@@ -610,7 +646,7 @@ describe("bin/uglifyjs", function() {
                 "Parse error at test/input/invalid/for-in_1.js:2,5",
                 "for (1, 2, a in b) {",
                 "     ^",
-                "ERROR: Invalid left-hand side in for..in loop"
+                "ERROR: Invalid left-hand side in for..in/of loop",
             ].join("\n"));
             done();
         });
@@ -624,7 +660,49 @@ describe("bin/uglifyjs", function() {
                 "Parse error at test/input/invalid/for-in_2.js:2,5",
                 "for (var a, b in c) {",
                 "     ^",
-                "ERROR: Only one variable declaration allowed in for..in loop"
+                "ERROR: Only one variable declaration allowed in for..in/of loop",
+            ].join("\n"));
+            done();
+        });
+    });
+    it("Should throw syntax error (for-of init)", function(done) {
+        var command = uglifyjscmd + " test/input/invalid/for-of_1.js";
+        exec(command, function(err, stdout, stderr) {
+            assert.ok(err);
+            assert.strictEqual(stdout, "");
+            assert.strictEqual(stderr.split(/\n/).slice(0, 4).join("\n"), [
+                "Parse error at test/input/invalid/for-of_1.js:2,5",
+                "for (b = 2 of a)",
+                "     ^",
+                "ERROR: Invalid left-hand side in for..in/of loop",
+            ].join("\n"));
+            done();
+        });
+    });
+    it("Should throw syntax error (for-of var)", function(done) {
+        var command = uglifyjscmd + " test/input/invalid/for-of_2.js";
+        exec(command, function(err, stdout, stderr) {
+            assert.ok(err);
+            assert.strictEqual(stdout, "");
+            assert.strictEqual(stderr.split(/\n/).slice(0, 4).join("\n"), [
+                "Parse error at test/input/invalid/for-of_2.js:2,13",
+                "for (var b = 2 of a)",
+                "             ^",
+                "ERROR: No initializers allowed in for..of loop",
+            ].join("\n"));
+            done();
+        });
+    });
+    it("Should throw syntax error (for-await)", function(done) {
+        var command = uglifyjscmd + " test/input/invalid/for-await.js";
+        exec(command, function(err, stdout, stderr) {
+            assert.ok(err);
+            assert.strictEqual(stdout, "");
+            assert.strictEqual(stderr.split(/\n/).slice(0, 4).join("\n"), [
+                "Parse error at test/input/invalid/for-await.js:1,11",
+                "for await (; console.log(42););",
+                "           ^",
+                "ERROR: Unexpected token: punc «;»",
             ].join("\n"));
             done();
         });
@@ -633,11 +711,13 @@ describe("bin/uglifyjs", function() {
         var command = uglifyjscmd + " test/input/invalid/switch.js";
         exec(command, function(err, stdout, stderr) {
             assert.ok(err);
-            var lines = stderr.split(/\n/);
-            assert.strictEqual(lines[0], "Parse error at test/input/invalid/switch.js:3,2");
-            assert.strictEqual(lines[1], "  default:");
-            assert.strictEqual(lines[2], "  ^");
-            assert.strictEqual(lines[3], "ERROR: More than one default clause in switch statement");
+            assert.strictEqual(stdout, "");
+            assert.strictEqual(stderr.split(/\n/).slice(0, 4).join("\n"), [
+                "Parse error at test/input/invalid/switch.js:3,2",
+                "  default:",
+                "  ^",
+                "ERROR: More than one default clause in switch statement",
+            ].join("\n"));
             done();
         });
     });

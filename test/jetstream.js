@@ -5,7 +5,7 @@
 
 var site = "https://browserbench.org/JetStream1.1";
 if (typeof phantom == "undefined") {
-    require("../tools/exit");
+    require("../tools/tty");
     var args = process.argv.slice(2);
     var debug = args.indexOf("--debug");
     if (debug < 0) {
@@ -58,22 +58,29 @@ if (typeof phantom == "undefined") {
     }).listen();
     server.on("listening", function() {
         var port = server.address().port;
-        if (debug) {
-            console.log("http://localhost:" + port + "/");
-        } else (function install() {
-            child_process.spawn(process.platform == "win32" ? "npm.cmd" : "npm", [
+        if (debug) return console.log("http://localhost:" + port + "/");
+        var cmd = process.platform == "win32" ? "npm.cmd" : "npm";
+
+        function npm(args, done) {
+            child_process.spawn(cmd, args, { stdio: [ "ignore", 1, 2 ] }).on("exit", done);
+        }
+
+        (function install() {
+            npm([
                 "install",
                 "phantomjs-prebuilt@2.1.14",
                 "--no-audit",
                 "--no-optional",
                 "--no-save",
                 "--no-update-notifier",
-            ], {
-                stdio: [ "ignore", 1, 2 ]
-            }).on("exit", function(code) {
+            ], function(code) {
                 if (code) {
                     console.log("npm install failed with code", code);
-                    return install();
+                    return npm([
+                        "cache",
+                        "clean",
+                        "--force",
+                    ], install);
                 }
                 var program = require("phantomjs-prebuilt").exec(process.argv[1], port);
                 program.stdout.pipe(process.stdout);
